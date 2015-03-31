@@ -12,25 +12,15 @@ from util import *
 # Theta functions of (25) in Teitelbaum's
 # and also the other theta functions that we need to compute the lambda's according to the formulas (23)
 # We sum terms until we get the result to the accuracy prec. When deciding the set of indicies over which we sum, we have made several simplifications that probably cause that we sum more terms than strictly needed for that accuracy, but this probably won't be an issue...
-
 def Theta(p1,p2,p3,version = None,prec = None):
-    try:
-        a = p1.valuation()
-        b = p2.valuation()
-        c = p3.valuation()
-        if min(a,b) <= 0:
-            raise RuntimeError('p1 and p2 must have all of them positive valuation')
-    # the input is not a p-adic but a power series ring, then we declare that each one has valuation one
-    except TypeError:
-        a = 1; b = 1; c = 1;
-    min_val = min(a,b)
     if prec is None:
-        prec = 2 * p1.precision_relative()
-    imax = ((1+(1+4*RR(prec/min_val)).sqrt())/2).ceiling()
+        prec = 2 * p1.parent().precision_cap()
+    # imax = ((1+(1+4*RR(prec/min_val)).sqrt())/2).ceiling()
+    imax = (RR(1)/2 + RR(prec + RR(1)/2).sqrt()).ceiling()
 
     # Define the different conditions and term forms
     if version is None:
-        condition = lambda i,j: b*(i**2-i.abs()) + a*(j**2-j.abs()) + c*((i-j)**2 - (i-j).abs())
+        condition = lambda i,j: b*(i**2-ZZ(i).abs()) + a*(j**2-ZZ(j).abs()) + c*((i-j)**2 - ZZ(i-j).abs())
         resdict = {}
         resdict['1p1m'] = resdict['1p2m'] = 0
         resdict['2p2m'] = resdict['1m2p'] = 0
@@ -66,9 +56,12 @@ def Theta(p1,p2,p3,version = None,prec = None):
     else:
         raise ValueError("Wrong version? version = %s"%version)
     res = 0
-    for i, j in product(range(-imax,imax+1),repeat = 2):
-        #if condition(i,j) <= prec:
-        if True:
+    for i in range(-imax,imax + 1):
+        jmax = RR(prec - .25 - i**2 +RR(i).abs())
+        if jmax < 0:
+            continue
+        jmax = (jmax.sqrt()+.5).ceiling()
+        for j in range(-jmax,jmax + 1):
             newterm = p2**(i**2) * p1**(j**2) * p3**((i-j)**2)
             if version is None:
                 p1l = p1**j
@@ -186,11 +179,11 @@ def IgusaClebschFromHalfPeriods(a, b, c, prec = None):
     else:
         return ICI_static(*xvec(a,b,c,prec))
 
-# computes the p-adic L-invariant
-# A = <gamma_1,gamma_1>
-# B = <gamma_1,gamma_2>
-# Tmatrix is the matrix of the T_ell operator with respect to the basis (gamma_1,gamma_2)
-# the output is (a,b), where L_p = a + bT
+# # computes the p-adic L-invariant
+# # A = <gamma_1,gamma_1>
+# # B = <gamma_1,gamma_2>
+# # Tmatrix is the matrix of the T_ell operator with respect to the basis (gamma_1,gamma_2)
+# # the output is (a,b), where L_p = a + bT
 # def p_adic_l_invariant(A,B, Tmatrix):
 #     ordA = A.ordp()
 #     ordB = B.ordp()
@@ -214,14 +207,14 @@ def p_adic_l_invariant(A,B,D,Tmatrix):
     n  = Matrix(K,3,1,[A.log(0),B.log(0),D.log(0)])
     return M.solve_right(n).list()
 
-def qlogs_from_Lp_and_ords(Lp,Tmatrix,q1ord, q2ord, q3ord):
-    K = Lp[0].parent()
+def qlogs_from_Lp_and_ords(a,b,Tmatrix,q1ord, q2ord, q3ord):
+    K = a.parent()
     ordA = q2ord + q3ord
     ordB = -q3ord
     ordD = q1ord + q3ord
     bord = matrix(K,2,2,[ordA,ordB,ordB,ordD]) * Tmatrix
     M = Matrix(K,3,2,[ordA, bord[0,0], ordB, bord[0,1],ordD,bord[1,1]])
-    logA, logB, logD = (M * matrix(K,2,1,Lp)).list()
+    logA, logB, logD = (M * matrix(K,2,1,[a,b])).list()
     return logB + logD, logA + logB, -logB
 
 def all_possible_qords(Tmatrix,N,initial = None):
@@ -232,7 +225,7 @@ def all_possible_qords(Tmatrix,N,initial = None):
     if z != 0:
         # Know that q1^z = q2^y q3^r
         for ordq2, ordq3 in product(range(N+1),repeat = 2):
-            ordq1 = y * ordq2 + r * ordq3
+            ordq1 = ZZ(y * ordq2 + r * ordq3)
             if ordq1 % z != 0:
                 continue
             ordq1 /= z
@@ -242,7 +235,7 @@ def all_possible_qords(Tmatrix,N,initial = None):
     if y != 0:
         # Know that q2^y = q1^z q3^-r
         for ordq1, ordq3 in product(range(N+1),repeat = 2):
-            ordq2 = z * ordq1 - r * ordq3
+            ordq2 = ZZ(z * ordq1 - r * ordq3)
             if ordq2 % y != 0:
                 continue
             ordq2 /= y
@@ -252,14 +245,14 @@ def all_possible_qords(Tmatrix,N,initial = None):
     if r != 0:
         # Know that q3^r = q1^z q2^-y
         for ordq1, ordq2 in product(range(N+1),repeat = 2):
-            ordq3 = z * ordq1 - y * ordq2
+            ordq3 = ZZ(z * ordq1 - y * ordq2)
             if ordq3 % r != 0:
                 continue
             ordq3 /= r
             ordtup = [ordq1,ordq2,ordq3]
             if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
                 ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
-    tmp = sorted(list(ans),key = lambda x: max([o for o in x]))
+    tmp = sorted(list(ans),key = lambda x: x[0]+x[1]+x[2])
     t0 = 0
     if initial is not None:
         try:
@@ -284,49 +277,39 @@ def recognize_invariants(j1,j2,j3,pval,base = QQ):
     Kp = j1.parent()
     j2, j3 = Kp(j2), Kp(j3)
     p = Kp.prime()
-    try:
-        froot = algdep(p**pval * j1,1).roots(QQ)[0][0]
-    except IndexError:
-        raise ValueError('Unrecognized')
-    if froot.global_height() > 0.9 * j1.precision_relative() * log(RR(p),10):
-        raise ValueError('Unrecognized')
-    # At this point we may have recognized j1
-    j1 = p**-pval * froot
-    I10 = p**pval * froot.denominator()
-    verbose('I10 = %s'%I10)
-    I2_5 = froot.numerator()
-    for q,e in I2_5.factor():
-        if e % 5 != 0:
-            v = 5 - (e % 5)
-            qv = q**v
-            I2_5 *= qv
-            I10 *= qv
-    verbose('I2_5 = %s, I10 = %s'%(I2_5,I10))
-    for I2,_ in (x**5 - I2_5).roots(QQ):
-        verbose('I2 = %s'%I2)
-        I4p = I10/I2**3 * j2
-        try:
-            I4 = algdep(I4p,1).roots(QQ)[0][0]
-        except IndexError:
+    threshold = .9 * RR(p).log(10)
+    for froot,_ in algdep(p**pval * j1,deg).roots(base):
+        if froot.global_height() > threshold * j1.precision_relative():
             continue
-        verbose('I4 = %s'%I4)
-        if I4.global_height() > 0.9 * I4p.precision_relative() * log(RR(p),10):
-            continue
-        I6p = I10/I2**2 * j3
-        try:
-            I6 = algdep(I6p,1).roots(QQ)[0][0]
-        except IndexError:
-            continue
-        verbose('I6 = %s'%I6)
-        if I6.global_height() > 0.9 * I6p.precision_relative() * log(RR(p),10):
-            continue
-        return (I2, I4, I6, I10)
-    else:
-        raise ValueError('Unrecognized')
+        # At this point we may have recognized j1
+        j1 = p**-pval * froot
+        I10 = p**pval * froot.denominator()
+        verbose('I10 = %s'%I10)
+        I2_5 = froot.numerator()
+        for q,e in I2_5.factor():
+            if e % 5 != 0:
+                v = 5 - (e % 5)
+                qv = q**v
+                I2_5 *= qv
+                I10 *= qv
+        verbose('I2_5 = %s, I10 = %s'%(I2_5,I10))
+        for I2,_ in (x**5 - I2_5).roots(base):
+            verbose('I2 = %s'%I2)
+            I4p = I10/I2**3 * j2
+            for I4,_ in algdep(I4p,deg).roots(base):
+                verbose('I4 = %s'%I4)
+                if I4.global_height() > threshold * I4p.precision_relative():
+                    continue
+                I6p = I10/I2**2 * j3
+                for I6,_ in algdep(I6p,deg).roots(base):
+                    verbose('I6 = %s'%I6)
+                    if I6.global_height() > threshold * I6p.precision_relative():
+                        continue
+                    return (I2, I4, I6, I10)
+    raise ValueError('Unrecognized')
 
 @parallel
 def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
-    found = False
     F = a.parent()
     TF = T.change_ring(F)
     p = F.prime()
@@ -334,7 +317,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
     K.<y> = F.extension(x^2 + p)
     deg = base.degree()
     oq1, oq2, oq3 = qords
-    q10, q20, q30 = [o.exp() for o in qlogs_from_Lp_and_ords([a,b],TF,oq1,oq2,oq3)]
+    q10, q20, q30 = [o.exp() for o in qlogs_from_Lp_and_ords(a,b,TF,oq1,oq2,oq3)]
     for s1, s2, s3 in product(F.teichmuller_system(),repeat = 3):
         q1 = K(s1 * q10 * p**oq1)
         q2 = K(s2 * q20 * p**oq2)
@@ -343,17 +326,28 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
             try:
                 # p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
                 I2c, I4c, I6c, I10c = IgusaClebschFromHalfPeriods(p1,p2,p3)
-                Kp = I2c.parent()
-                Kpdeg = Kp.degree()
                 # Get absolute invariants j1, j2, j3
-                j1 = (I2c**5/I10c).trace() / Kpdeg
-                j2 = (I2c**3*I4c/I10c).trace() / Kpdeg
-                j3 = (I2c**2*I6c/I10c).trace() / Kpdeg
-                p = j1.parent().prime()
-                # fj1 = algdep(p**(oq1+oq2+oq3) * j1,deg)
+                j1 = I2c**5/I10c
+                j2 = I2c**3*I4c/I10c
+                j3 = I2c**2*I6c/I10c
+                j1 = j1.trace() / j1.parent().degree()
+                j2 = j2.trace() / j2.parent().degree()
+                j3 = j3.trace() / j3.parent().degree()
+
+                # p = j1.parent().prime()
+                # j1 = p**(-j1.valuation()) * j1
+                # prec_rel = j1.precision_relative()
+                # fj1 = algdep(j1,1)
+                # if fj1 == algdep(Qp(p,80)(j1),1):
+                #     try:
+                #         return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
+                #     except:
+                #         return (QQ(1),QQ(1),QQ(1),fj1)
+
                 # if fj1.degree() == deg:
                 #     return "%s \t %s"%(len(str(fj1)),len(fj1.change_ring(base).factor()))
-                # #return None
+                # return None
+
                 if cheatjs is not None:
                     if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 5:
                         return (oq1,oq2,oq3,1)
