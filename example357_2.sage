@@ -17,27 +17,30 @@ print 'mseed = %s'%mseed
 x = QQ['x'].gen()
 Crv = HyperellipticCurve(x^6+8*x^4-8*x^3+20*x^2-12*x+12)
 I2g, I4g, I6g, I10g = Crv.igusa_clebsch_invariants()
-j1g = I2g**5 / I10g # One of absolute's Igusa invariants
+j1g = I2g**5 / I10g
 j2g = I2g**3 * I4g / I10g
-j3g = I2g**2 * I6g / I10g # One of absolute's Igusa invariants
+j3g = I2g**2 * I6g / I10g
 
 p = 3
 D = 7*17
+Np = 1
 sign = 1
-prec = 50
-working_prec = 300
+prec = 120
+working_prec = 400
 x = QQ['x'].gen()
 pol = x^2 - 2
 
 path = ROOT = '/home/float/darmonpoints/'
 from sarithgroup import *
 from cohomology import *
-G = BigArithGroup(p,D,1,grouptype = 'PGL2')
+G = BigArithGroup(p,D,Np)
 Coh = CohomologyGroup(G.Gpn)
 q = ZZ(2)
-K0 = (Coh.involution_at_infinity_matrix().transpose()-sign).kernel().change_ring(QQ)
+Winf = Coh.involution_at_infinity_matrix().transpose()
+K0 = (Winf - sign).kernel().change_ring(QQ)
 # K0 = QQ**Coh.dimension()
 Aq0 = Coh.hecke_matrix(q,use_magma = True).transpose().change_ring(QQ)
+
 good_component = None
 for U0,is_irred in Aq0.decomposition_of_subspace(K0):
     if U0.dimension() == 2 and is_irred and Aq0.restrict(U0).charpoly() == pol:
@@ -50,8 +53,7 @@ print good_component
 flist = []
 for row0 in (good_component.denominator()*good_component.matrix()).rows():
     col0 = [ZZ(o) for o in row0.list()]
-    f = sum([a*Coh.gen(i) for i,a in enumerate(col0) if a != 0],Coh(0))
-    flist.append(f)
+    flist.append(sum([a * phi for a,phi in zip(col0,Coh.gens())],Coh(0)))
 
 wp = G.wp()
 B = G.Gpn.abelianization()
@@ -110,20 +112,28 @@ num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist =
 den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
 D = num/den
 
-A = (A + O(p**(prec+A.valuation()))).trace()/A.parent().degree()
-B = (B + O(p**(prec+B.valuation()))).trace()/B.parent().degree()
-D = (D + O(p**(prec+D.valuation()))).trace()/D.parent().degree()
+
+newA = (A + O(p**(prec+A.valuation()))).trace()/A.parent().degree()
+newB = (B + O(p**(prec+B.valuation()))).trace()/B.parent().degree()
+newD = (D + O(p**(prec+D.valuation()))).trace()/D.parent().degree()
+
+if (newA - A).valuation() > 5 and  (newB - B).valuation() > 5 and  (newD - D).valuation() > 5:
+    A, B, D = newA, newB, newD
+else:
+    assert 0
 
 F = Qp(p,prec) #A.parent()
 T = Aq0.restrict(good_component)
 TF = T.change_ring(F)
 a,b = p_adic_l_invariant(A,B,D,TF)
+
+
 a = a.trace()/a.parent().degree()
 b = b.trace()/b.parent().degree()
 
 # Below are precomputed values
-a = 2*3^2 + 2*3^3 + 2*3^5 + 2*3^6 + 3^9 + 2*3^10 + 3^12 + 2*3^13 + 3^14 + 2*3^15 + 3^17 + 2*3^18 + 3^20 + 3^21 + 3^22 + 2*3^24 + 3^26 + 3^27 + 3^28 + 3^29 + O(3^30)
-b = 3 + 3^2 + 2*3^4 + 2*3^6 + 3^8 + 3^9 + 3^10 + 3^15 + 3^16 + 3^17 + 2*3^18 + 2*3^19 + 3^23 + 3^24 + 3^25 + 3^27 + 2*3^28 + O(3^30)
+a = 2*3^2 + 2*3^3 + 2*3^5 + 2*3^6 + 3^9 + 2*3^10 + 3^12 + 2*3^13 + 3^14 + 2*3^15 + 3^17 + 2*3^18 + 3^20 + 3^21 + 3^22 + 2*3^24 + 3^26 + 3^27 + 3^28 + 3^29 + 3^30 + 3^31 + 3^32 + 2*3^35 + 2*3^37 + 2*3^40 + 2*3^41 + 3^42 + 3^43 + 3^45 + 2*3^46 + 2*3^47 + 3^48 + 2*3^49 + 2*3^50 + 2*3^52 + 3^54 + 2*3^55 + 3^56 + 2*3^57 + 3^59 + O(3^60)
+b = 3 + 3^2 + 2*3^4 + 2*3^6 + 3^8 + 3^9 + 3^10 + 3^15 + 3^16 + 3^17 + 2*3^18 + 2*3^19 + 3^23 + 3^24 + 3^25 + 3^27 + 2*3^28 + 3^31 + 2*3^32 + 2*3^35 + 3^37 + 2*3^40 + 2*3^41 + 2*3^42 + 3^44 + 2*3^45 + 3^47 + 3^48 + 3^51 + 2*3^52 + 3^54 + 3^55 + 3^56 + 2*3^57 + 3^58 + 3^59 + O(3^60)
 a = a.parent().fraction_field()(a)
 b = a.parent().fraction_field()(b)
 T =Matrix(ZZ,2,2,[-1,-1,-1,1])

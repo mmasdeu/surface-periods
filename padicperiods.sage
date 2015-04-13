@@ -17,7 +17,10 @@ def Theta(p1,p2,p3,version = None,prec = None):
         prec = 2 * p1.parent().precision_cap()
     # imax = ((1+(1+4*RR(prec/min_val)).sqrt())/2).ceiling()
     imax = (RR(1)/2 + RR(prec + RR(1)/2).sqrt()).ceiling()
-
+    a = p1.valuation().abs()
+    b = p2.valuation().abs()
+    c = p3.valuation().abs()
+    # print 'Entering Theta %s %s %s'%(a,b,c)
     # Define the different conditions and term forms
     if version is None:
         condition = lambda i,j: b*(i**2-ZZ(i).abs()) + a*(j**2-ZZ(j).abs()) + c*((i-j)**2 - ZZ(i-j).abs())
@@ -179,26 +182,12 @@ def IgusaClebschFromHalfPeriods(a, b, c, prec = None):
     else:
         return ICI_static(*xvec(a,b,c,prec))
 
-# # computes the p-adic L-invariant
-# # A = <gamma_1,gamma_1>
-# # B = <gamma_1,gamma_2>
-# # Tmatrix is the matrix of the T_ell operator with respect to the basis (gamma_1,gamma_2)
-# # the output is (a,b), where L_p = a + bT
-# def p_adic_l_invariant(A,B, Tmatrix):
-#     ordA = A.ordp()
-#     ordB = B.ordp()
-#     logA = A.log(p_branch = 0)
-#     logB = B.log(p_branch = 0)
-#     m = Tmatrix.trace()
-#     n = -Tmatrix.determinant()
-#     # we solve the system A*[a,b]^t = B
-#     bord = Tmatrix.column(0) * vector([ordA,ordB])
-#     blog = Tmatrix.column(0) * vector([logA,logB])
-#     A = Matrix(2,2,[ordA, bord, bord, n*ordA + m*bord])
-#     print 'A = %s'%A
-#     B = Matrix(2,1,[logA, blog])
-#     return A.solve_right(B).list()
-
+# computes the p-adic L-invariant
+# A = <gamma_1,gamma_1>
+# B = <gamma_1,gamma_2>
+# D = <gamma_2,gamma_2>
+# Tmatrix is the matrix of the T_ell operator with respect to the basis (gamma_1,gamma_2)
+# the output is (a,b), where L_p = a + bT
 def p_adic_l_invariant(A,B,D,Tmatrix):
     K = A.parent()
     x,y,z,t = Tmatrix.change_ring(K).list()
@@ -322,39 +311,39 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
         q1 = K(s1 * q10 * p**oq1)
         q2 = K(s2 * q20 * p**oq2)
         q3 = K(s3 * q30 * p**oq3)
-        for p1,p2,p3 in product(our_sqrt(q1,K,return_all = True),our_sqrt(q2,K,return_all = True),our_sqrt(q3,K,return_all = True)):
-            try:
-                # p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
-                I2c, I4c, I6c, I10c = IgusaClebschFromHalfPeriods(p1,p2,p3)
-                # Get absolute invariants j1, j2, j3
-                j1 = I2c**5/I10c
-                j2 = I2c**3*I4c/I10c
-                j3 = I2c**2*I6c/I10c
-                j1 = j1.trace() / j1.parent().degree()
-                j2 = j2.trace() / j2.parent().degree()
-                j3 = j3.trace() / j3.parent().degree()
+        # for p1,p2,p3 in product(our_sqrt(q1,K,return_all = True),our_sqrt(q2,K,return_all = True),our_sqrt(q3,K,return_all = True)):
+        try:
+            p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
+            I2c, I4c, I6c, I10c = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec)
+            # Get absolute invariants j1, j2, j3
+            j1 = I2c**5/I10c
+            j2 = I2c**3*I4c/I10c
+            j3 = I2c**2*I6c/I10c
+            j1 = j1.trace() / j1.parent().degree()
+            j2 = j2.trace() / j2.parent().degree()
+            j3 = j3.trace() / j3.parent().degree()
 
-                # p = j1.parent().prime()
-                # j1 = p**(-j1.valuation()) * j1
-                # prec_rel = j1.precision_relative()
-                # fj1 = algdep(j1,1)
-                # if fj1 == algdep(Qp(p,80)(j1),1):
-                #     try:
-                #         return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
-                #     except:
-                #         return (QQ(1),QQ(1),QQ(1),fj1)
+            p = j1.parent().prime()
+            j1 = p**(-j1.valuation()) * j1
+            prec_rel = j1.precision_relative()
+            fj1 = algdep(j1,1)
+            if fj1 == algdep(j1.add_bigoh(j1.precision_absolute() - 3),1) and fj1.roots(base)[0][0].denominator() % 357 == 0:
+                try:
+                    return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
+                except:
+                    return (QQ(1),QQ(1),QQ(1),fj1)
 
-                # if fj1.degree() == deg:
-                #     return "%s \t %s"%(len(str(fj1)),len(fj1.change_ring(base).factor()))
-                # return None
+            if fj1.degree() == deg:
+                return "%s \t %s"%(len(str(fj1)),len(fj1.change_ring(base).factor()))
+            return None
 
-                if cheatjs is not None:
-                    if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 5:
-                        return (oq1,oq2,oq3,1)
-                else:
-                    return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base)
-            except ValueError:
-                continue
+            if cheatjs is not None:
+                if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 3:
+                    return (oq1,oq2,oq3,1)
+            else:
+                return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base)
+        except ValueError:
+            continue
     return 'Nope'
 
 def euler_factor_twodim(p,T):
