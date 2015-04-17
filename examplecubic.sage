@@ -1,7 +1,7 @@
 load('padicperiods.sage')
 
 sign = 1
-prec = 200
+prec = 30
 working_prec = 2000
 
 path = ROOT = '/home/float/darmonpoints/'
@@ -35,100 +35,41 @@ P = F.ideal(r)
 D = F.ideal(r^2 - r + 1)
 Np = F.ideal(1)
 Sinf = [-1]
+Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
+abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
 
-p = P.norm()
-# K0 = (Coh.involution_at_infinity_matrix()-sign).right_kernel().change_ring(QQ)
-# good_component = K0
+G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
+Coh = CohomologyGroup(G.Gpn)
 
-d = Coh.dimension()
-K0 = MatrixSpace(QQ,d,d)(0).right_kernel()
-V = F.primes_of_degree_one_list(100)
-Aq0 = Coh.hecke_matrix(V[1],use_magma = True).transpose().change_ring(QQ)
-good_component = None
-for U0,is_irred in Aq0.decomposition_of_subspace(K0):
-    if U0.dimension() == 2 and is_irred:
-        print Aq0.restrict(U0).charpoly()
-        assert good_component is None
-        good_component = U0
-assert good_component is not None
-print good_component
-
-flist = []
-for row0 in (good_component.denominator()*good_component.matrix()).rows():
-    col0 = [ZZ(o) for o in row0.list()]
-    f = sum([a*Coh.gen(i) for i,a in enumerate(col0) if a != 0],Coh(0))
-    flist.append(f)
-
-wp = G.wp()
-B = G.Gpn.abelianization()
-C = G.Gn.abelianization()
-Bab = B.abelian_group()
-Cab = C.abelian_group()
-verbose('Finding f...')
-fdata = [B.ab_to_G(o).quaternion_rep for o in B.gens_small()]
-# verbose('fdata = %s'%fdata)
-f = B.hom_from_image_of_gens_small([C.G_to_ab(G.Gn(o)) for o in fdata])
-verbose('Finding g...')
-gdata = [wp**-1 * o * wp for o in fdata]
-# verbose('gdata = %s'%gdata)
-g = B.hom_from_image_of_gens_small([C.G_to_ab(G.Gn(o)) for o in gdata])
-fg = direct_sum_of_maps([f,g])
-V = Bab.gen(0).lift().parent()
-good_ker = V.span_of_basis([o.lift() for o in fg.kernel().gens()]).LLL().rows()
-ker = [B.ab_to_G(Bab(o)).quaternion_rep for o in good_ker]
-
-# foundg0 = False
-# foundg1 = False
-# for o in ker:
-#     a,b = flist[0].evaluate(o)[0], flist[1].evaluate(o)[0]
-#     if not foundg0 and b == 0 and a != 0:
-#         foundg0 = True
-#         g0 = o
-#         g0coeff = a
-#     if not foundg1 and a == 0 and b != 0:
-#         foundg1 = True
-#         g1 = o
-#         g1coeff = b
-# assert foundg0 and foundg1
-# c = lcm(g0coeff,g1coeff)
-# g0 = g0**ZZ(c/g0coeff)
-# g1 = g1**ZZ(c/g1coeff)
-
-g0 = ker[3]**2
-g1 = ker[0]**2*ker[3]
-print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
-print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
+flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
+ell, T = hecke_data[0]
+g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
 
 from homology import *
-working_prec = 2000
-xi10,xi20 = lattice_homology_cycle(G,G.Gn(g0),G.Gn(wp**-1 * g0 * wp),working_prec)
-xi11,xi21 = lattice_homology_cycle(G,G.Gn(g1),G.Gn(wp**-1 * g1 * wp),working_prec)
-Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
-Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
+xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
+xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+
+Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,progress_bar = True)
+Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,progress_bar = True)
 
 from integrals import *
-num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-A = num/den
+A = integrate_H1_many(G,[(xi10,False,1),(xi20,True,-1)],Phif,1,method = 'moments',prec = working_prec, progress_bar = True)
+B = integrate_H1_many(G,[(xi11,False,1),(xi21,True,-1)],Phif,1,method = 'moments',prec = working_prec, progress_bar = True)
+D = integrate_H1_many(G,[(xi11,False,1),(xi21,True,-1)],Phig,1,method = 'moments',prec = working_prec, progress_bar = True)
 
-num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-B = num/den
-
-num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-D = num/den
-
-A = A.trace()/A.parent().degree() + O(p**(prec+A.valuation()))
-B = B.trace()/B.parent().degree() + O(p**(prec+B.valuation()))
-D = D.trace()/D.parent().degree() + O(p**(prec+D.valuation()))
+A = (A + O(p**(prec+A.valuation()))).trace()/A.parent().degree()
+B = (B + O(p**(prec+B.valuation()))).trace()/B.parent().degree()
+D = (D + O(p**(prec+D.valuation()))).trace()/D.parent().degree()
 
 F = A.parent()
-T = Aq0.restrict(good_component)
 TF = T.change_ring(F)
-a,b = p_adic_l_invariant(A,B,D,TF)
-a = a.trace()/a.parent().degree()
-b = b.trace()/b.parent().degree()
+a1,b1 = p_adic_l_invariant(A,B,D,TF)
+
+# g0 = ker[3]**2
+# g1 = ker[0]**2*ker[3]
+# print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
+# print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
+
 
 # Below are precomputed values
 a = 3 + 3^3 + 3^4 + 2*3^7 + 3^9 + 3^10 + 3^11 + 2*3^12 + 3^14 + 3^15 + 2*3^17 + 3^18 + 2*3^20 + 3^22 + 3^23 + 3^24 + 3^27 + 2*3^28 + 2*3^29 + 3^30 + 3^31 + 2*3^32 + 2*3^36 + 2*3^38 + 3^39 + 3^40 + 3^41 + 2*3^45 + 3^46 + 3^47 + 2*3^48 + 2*3^50 + 3^52 + 2*3^55 + 3^56 + 3^57 + 2*3^58 + 2*3^59 + 3^60 + 3^64 + 2*3^69 + 3^70 + 2*3^71 + 2*3^73 + 2*3^74 + 3^76 + 3^77 + 3^79 + 3^80 + 3^81 + 2*3^82 + 3^83 + 3^85 + 2*3^86 + 2*3^87 + 2*3^88 + 2*3^89 + 2*3^90 + 2*3^91 + 2*3^92 + 3^95 + 2*3^98 + 2*3^100 + 2*3^102 + 2*3^103 + 3^106 + 2*3^107 + 2*3^108 + 2*3^109 + 2*3^110 + 3^111 + 2*3^112 + 2*3^114 + 2*3^116 + 3^117 + 2*3^119 + 3^120 + 3^121 + 3^123 + 2*3^124 + 3^126 + 3^127 + 2*3^129 + 2*3^132 + 3^133 + 3^134 + 3^135 + 2*3^137 + 3^138 + 2*3^139 + 3^141 + 3^142 + 2*3^144 + 2*3^145 + 2*3^146 + 3^148 + 3^150 + 2*3^151 + 2*3^153 + 3^154 + 2*3^155 + 3^156 + 3^158 + 3^159 + 2*3^160 + 2*3^161 + 2*3^162 + 2*3^163 + 3^165 + 2*3^166 + 2*3^167 + 3^170 + 3^172 + 3^174 + 2*3^175 + 3^176 + 2*3^177 + 3^178 + 3^180 + 3^181 + 2*3^182 + 2*3^183 + 2*3^184 + 2*3^185 + 3^186 + 3^187 + 3^188 + 2*3^189 + 2*3^190 + 2*3^191 + 3^192 + 3^193 + O(3^195)

@@ -20,7 +20,7 @@ p = 7
 D = 1
 Np = 3*17
 sign = 1
-prec = 40
+prec = 30
 working_prec = 200
 x = QQ['x'].gen()
 pol = x^2 - 2
@@ -149,13 +149,13 @@ b = a.parent().fraction_field()(b)
 T =Matrix(ZZ,2,2,[-1, 1, 1, 1])
 # ,[j1g,j2g,j3g]
 
-inp_vec = [(a,b,T.transpose(),qords,30,QQ) for qords in all_possible_qords(T.transpose().change_ring(ZZ),20)]
+inp_vec = [(a,b,T.transpose(),qords,prec,QQ) for qords in all_possible_qords(T.transpose().change_ring(ZZ),50)]
 for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
     if outt != 'Nope':
         try:
             i2,i4,i6,i10 = list(outt)
             print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
-            #break
+            break
         except ValueError:
             print outt
     else:

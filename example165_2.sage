@@ -1,6 +1,5 @@
 load('padicperiods.sage')
 
-
 # A good curve
 # Conductor 165 = 3 * 5 * 11
 x = QQ['x'].gen()
@@ -11,10 +10,10 @@ j2g = I2g**3 * I4g / I10g
 j3g = I2g**2 * I6g / I10g # One of absolute's Igusa invariants
 
 p = 11
-D = 15
-Np = 1
+D = 1
+Np = 15
 sign = 1
-prec = 60
+prec = 10
 working_prec = 120
 x = QQ['x'].gen()
 pol = x^2 + 2*x - 1
@@ -24,61 +23,23 @@ from sarithgroup import *
 from cohomology import *
 G = BigArithGroup(p,D,Np)
 Coh = CohomologyGroup(G.Gpn)
-q = ZZ(2)
-K0 = (Coh.involution_at_infinity_matrix()-sign).right_kernel().change_ring(QQ)
-Aq0 = Coh.hecke_matrix(q,use_magma = True).transpose().change_ring(QQ)
-good_component = None
-for U0,is_irred in Aq0.decomposition_of_subspace(K0):
-    if U0.dimension() == 2 and is_irred and Aq0.restrict(U0).charpoly() == pol:
-        print Aq0.restrict(U0).charpoly()
-        assert good_component is None
-        good_component = U0
-assert good_component is not None
-print good_component
 
-flist = []
-for row0 in (good_component.denominator()*good_component.matrix()).rows():
-    col0 = [ZZ(o) for o in row0.list()]
-    f = sum([a*Coh.gen(i) for i,a in enumerate(col0) if a != 0],Coh(0))
-    flist.append(f)
 
-wp = G.wp()
-B = G.Gpn.abelianization()
-C = G.Gn.abelianization()
-Bab = B.abelian_group()
-Cab = C.abelian_group()
-verbose('Finding f...')
-fdata = [B.ab_to_G(o).quaternion_rep for o in B.gens_small()]
-# verbose('fdata = %s'%fdata)
-f = B.hom_from_image_of_gens_small([C.G_to_ab(G.Gn(o)) for o in fdata])
-verbose('Finding g...')
-gdata = [wp**-1 * o * wp for o in fdata]
-# verbose('gdata = %s'%gdata)
-g = B.hom_from_image_of_gens_small([C.G_to_ab(G.Gn(o)) for o in gdata])
-fg = direct_sum_of_maps([f,g])
-V = Bab.gen(0).lift().parent()
-good_ker = V.span_of_basis([o.lift() for o in fg.kernel().gens()]).LLL().rows()
-ker = [B.ab_to_G(Bab(o)).quaternion_rep for o in good_ker]
+def get_pseudo_orthonormal_homology(self, cocycles, smoothen = 0):
+    ker = self.get_homology_kernel(smoothen = smoothen)
+    # Now we need to find elements orthogonal to given cocycles
+    dim = len(cocycles)
+    A = Matrix(ZZ,dim,0)
+    for vec0 in ker:
+        A = A.augment(vector([ZZ(f.evaluate(vec0)[0]) for f in cocycles]))
+    B = A.solve_right(Matrix(ZZ,dim,dim,1))
+    B = B.denominator() * B
+    Gab = self.Gpn.abelianization()
+    return [ Gab.ab_to_G(sum(ZZ(i) * Gab.G_to_ab(self.Gpn(o)) for o,i in zip(ker,col.list()))).quaternion_rep for col in B.columns() ]
 
-foundg0 = False
-foundg1 = False
-for o in ker:
-    a,b = flist[0].evaluate(o)[0], flist[1].evaluate(o)[0]
-    if not foundg0 and b == 0 and a != 0:
-        foundg0 = True
-        g0 = o
-        g0coeff = a
-    if not foundg1 and a == 0 and b != 0:
-        foundg1 = True
-        g1 = o
-        g1coeff = b
-assert foundg0 and foundg1
-c = lcm(g0coeff,g1coeff)
-g0 = g0**ZZ(c/g0coeff)
-g1 = g1**ZZ(c/g1coeff)
-
-print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
-print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
+flist, hecke_data = Coh.get_twodim_cocycle(sign,pol = pol,return_all = False)
+ell, T = hecke_data[0]
+g0, g1 = get_pseudo_orthonormal_homology(G,flist,smoothen = ZZ(ell))
 
 from homology import *
 xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)

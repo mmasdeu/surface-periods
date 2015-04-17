@@ -311,39 +311,44 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
         q1 = K(s1 * q10 * p**oq1)
         q2 = K(s2 * q20 * p**oq2)
         q3 = K(s3 * q30 * p**oq3)
-        # for p1,p2,p3 in product(our_sqrt(q1,K,return_all = True),our_sqrt(q2,K,return_all = True),our_sqrt(q3,K,return_all = True)):
         try:
             p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
-            I2c, I4c, I6c, I10c = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec)
+            I2c, I4c, I6c, I10c = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = 2*prec)
+        except ValueError:
+            continue
+        try:
             # Get absolute invariants j1, j2, j3
             j1 = I2c**5/I10c
             j2 = I2c**3*I4c/I10c
             j3 = I2c**2*I6c/I10c
-            j1 = j1.trace() / j1.parent().degree()
-            j2 = j2.trace() / j2.parent().degree()
-            j3 = j3.trace() / j3.parent().degree()
+            j1n = j1.trace() / j1.parent().degree()
+            j2n = j2.trace() / j2.parent().degree()
+            j3n = j3.trace() / j3.parent().degree()
+            assert (j1 - j1n).valuation() > 5,'j1 = %s, j1n = %s'%(j1,j1n)
+            assert (j2 - j2n).valuation() > 5,'j2err'
+            assert (j3 - j3n).valuation() > 5,'j3err'
+            j1, j2, j3 = j1n, j2n, j3n
 
-            p = j1.parent().prime()
-            j1 = p**(-j1.valuation()) * j1
-            prec_rel = j1.precision_relative()
-            fj1 = algdep(j1,1)
-            if fj1 == algdep(j1.add_bigoh(j1.precision_absolute() - 3),1) and fj1.roots(base)[0][0].denominator() % 357 == 0:
-                try:
-                    return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
-                except:
-                    return (QQ(1),QQ(1),QQ(1),fj1)
+            # j1 = p**(-j1.valuation()) * j1
+            # prec_rel = j1.precision_relative()
+            # fj1 = algdep(j1,base.degree())
+            # if fj1.roots(base)[0][0].denominator() % ZZ(conductor/p) == 0:
+            #     try:
+            #         return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
+            #     except:
+            #         return (QQ(1),QQ(1),QQ(1),fj1)
 
-            if fj1.degree() == deg:
-                return "%s \t %s"%(len(str(fj1)),len(fj1.change_ring(base).factor()))
-            return None
+            # if fj1.degree() == deg:
+            #     return "%s \t %s"%(len(str(fj1)),len(fj1.change_ring(base).factor()))
+            # return None
 
             if cheatjs is not None:
                 if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 3:
                     return (oq1,oq2,oq3,1)
             else:
                 return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base)
-        except ValueError:
-            continue
+        except Exception as e:
+            return str(e.message)
     return 'Nope'
 
 def euler_factor_twodim(p,T):

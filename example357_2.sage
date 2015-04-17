@@ -147,7 +147,7 @@ for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
             print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
             break
         except ValueError:
-            print outt
+            print 'OOps!! %s'%str(outt)
     else:
         print 'Finished (%s) %s...'%(sum(inpt[0][3]),str(inpt[0][3]))
 
