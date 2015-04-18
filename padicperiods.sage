@@ -260,12 +260,14 @@ def ComputeRootFromApprox(f,x0, prec):
         xn = xnn
     return xn
 
-def recognize_invariants(j1,j2,j3,pval,base = QQ):
+def recognize_invariants(j1,j2,j3,pval,base = QQ,phi = None):
     deg = base.degree()
     x = QQ['x'].gen()
     Kp = j1.parent()
     j2, j3 = Kp(j2), Kp(j3)
     p = Kp.prime()
+    if phi is None:
+        phi = lambda t:t
     threshold = .9 * RR(p).log(10)
     for froot,_ in algdep(p**pval * j1,deg).roots(base):
         if froot.global_height() > threshold * j1.precision_relative():
@@ -274,22 +276,24 @@ def recognize_invariants(j1,j2,j3,pval,base = QQ):
         j1 = p**-pval * froot
         I10 = p**pval * froot.denominator()
         verbose('I10 = %s'%I10)
-        I2_5 = froot.numerator()
-        for q,e in I2_5.factor():
-            if e % 5 != 0:
-                v = 5 - (e % 5)
-                qv = q**v
-                I2_5 *= qv
-                I10 *= qv
+        I2_5 = froot.denominator() * froot
+        try:
+            for q,e in I2_5.factor():
+                if e % 5 != 0:
+                    v = 5 - (e % 5)
+                    qv = q**v
+                    I2_5 *= qv
+                    I10 *= qv
+        except ArithmeticError: pass
         verbose('I2_5 = %s, I10 = %s'%(I2_5,I10))
         for I2,_ in (x**5 - I2_5).roots(base):
             verbose('I2 = %s'%I2)
-            I4p = I10/I2**3 * j2
+            I4p = phi(I10/I2**3) * j2
             for I4,_ in algdep(I4p,deg).roots(base):
                 verbose('I4 = %s'%I4)
                 if I4.global_height() > threshold * I4p.precision_relative():
                     continue
-                I6p = I10/I2**2 * j3
+                I6p = phi(I10/I2**2) * j3
                 for I6,_ in algdep(I6p,deg).roots(base):
                     verbose('I6 = %s'%I6)
                     if I6.global_height() > threshold * I6p.precision_relative():
@@ -298,7 +302,7 @@ def recognize_invariants(j1,j2,j3,pval,base = QQ):
     raise ValueError('Unrecognized')
 
 @parallel
-def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
+def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,phi = None):
     F = a.parent()
     TF = T.change_ring(F)
     p = F.prime()
@@ -332,7 +336,8 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
             # j1 = p**(-j1.valuation()) * j1
             # prec_rel = j1.precision_relative()
             # fj1 = algdep(j1,base.degree())
-            # if fj1.roots(base)[0][0].denominator() % ZZ(conductor/p) == 0:
+            # # return fj1
+            # if len(fj1.roots(base)) > 0 :
             #     try:
             #         return (QQ(1),QQ(1),QQ(1),fj1.roots(base)[0][0])
             #     except:
@@ -346,7 +351,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None):
                 if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 3:
                     return (oq1,oq2,oq3,1)
             else:
-                return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base)
+                return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
         except Exception as e:
             return str(e.message)
     return 'Nope'

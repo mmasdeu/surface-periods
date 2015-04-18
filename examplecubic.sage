@@ -1,113 +1,117 @@
 load('padicperiods.sage')
 
 sign = 1
-prec = 30
-working_prec = 2000
+prec = 300
+working_prec = 3000
 
-path = ROOT = '/home/float/darmonpoints/'
+#path = ROOT = '/home/float/darmonpoints/'
 from sarithgroup import *
 from cohomology import *
 
-#### Search for candidates
-# candidates = load('all_candidates_with_covol.sobj')
-# for ii,cand in enumerate(candidates):
-#     print 'Doing ii = %s'%ii
-#     if ii < 69:
-#         continue
-#     F,P,D,Np,Sinf,covol = cand
-#     if F.degree() == 2:
-#         continue
-#     Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
-#     try:
-#         abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
-#     except ValueError:
-#         continue
-#     G = BigArithGroup(p,abtuple,Np,base = F,grouptype = 'PGL2')
-#     Coh = CohomologyGroup(G.Gpn)
-#     if Coh.dimension() >= 2:
-#         fwrite(str((ii,F.polynomial(),p.gens_reduced()[0],D.gens_reduced()[0],Np.gens_reduced()[0],Sinf)),'g2candidates.txt')
-
-# PARAMETERS
-
 x = QQ['x'].gen()
-F.<r> = NumberField(x^3 - x**2 + 2*x - 3)
-P = F.ideal(r)
-D = F.ideal(r^2 - r + 1)
-Np = F.ideal(1)
-Sinf = [-1]
-Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
-abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
+r = QQ['r'].gen()
+# PARAMETERS
+candidate_list =[('129_0', x^3 - x^2 + 2*x - 3, r, r^2 - r + 1, 1, [-1]),
+                 ('129_1', x^3 - x^2 + 2*x - 3, r^2 - r + 1, r, 1, [-1]),
+                 ('132_0', x^3 - x^2 + 4*x - 1, r^2 - r + 3, -r^2 + r - 2, 1, [-1]),
+                 ('132_1', x^3 - x^2 + 4*x - 1, -r^2 + r - 2, r^2 - r + 3, 1, [-1]),
+                 (130, x^3 - x^2 + 2*x - 3, r, 2, 1, [-1]),
+                 (183, x^3 - x^2 - 3*x - 3, -r^2 + 2*r + 2, r + 1, 1, [-1]),
+                 (184, x^3 - x^2 - 3*x - 3, -r^2 + 2*r + 2, r, 1, [-1]),
+                 (207, x^3 - x^2 + 5*x - 2, r, -r + 1, 1, [-1]),
+                 (194, x^3 - x^2 - 2*x - 3, r, -r + 1, 1, [-1]),
+                 (209, x^3 - x^2 + 5*x - 2, 2*r^2 - r + 9, -r + 1, 1, [-1]),
+                 (210, x^3 - 4*x - 5, -r - 1, -r^2 + r + 3, 1, [-1]),
+                 (236, x^3 - x^2 - 5*x + 8, -r + 2, -r^2 - r + 3, 1, [-1]),
+                 (269, x^3 - x^2 - 3*x - 4, r^2 - 2*r - 2, -r - 1, 1, [-1])]
+@parallel
+def try_your_luck(code,pol,Pgen,Dgen,Npgen,Sinf):
+    outfile = 'out_try_luck_cubic_%s_%s.txt'%(i,code)
+    fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
+    F.<r> = NumberField(pol)
+    r = F.gen()
+    P = F.ideal(Pgen)
+    D = F.ideal(Dgen)
+    Np = F.ideal(Npgen)
+    Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
+    abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
 
-G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
-Coh = CohomologyGroup(G.Gpn)
+    G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
+    Coh = CohomologyGroup(G.Gpn)
+    fwrite('Computed Cohomology group',outfile)
+    flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
+    fwrite('Obtained cocycle',outfile)
+    ell, T = hecke_data[0]
+    g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
 
-flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
-ell, T = hecke_data[0]
-g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
+    fwrite('Obtained homology generators',outfile)
+    from homology import *
+    xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
+    xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+    fwrite('Defined homology cycles',outfile)
+    Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
+    Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
+    fwrite('Overconvergent lift completed',outfile)
+    from integrals import *
+    num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    A = num/den
+    fwrite('Finished computation of A period',outfile)
+    num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    B = num/den
+    fwrite('Finished computation of B period',outfile)
 
-from homology import *
-xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
-xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+    num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    D = num/den
+    fwrite('Finished computation of D period',outfile)
 
-Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,progress_bar = True)
-Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,progress_bar = True)
+    A = A.add_bigoh(prec + A.valuation())
+    B = B.add_bigoh(prec + B.valuation())
+    D = D.add_bigoh(prec + D.valuation())
 
-from integrals import *
-A = integrate_H1_many(G,[(xi10,False,1),(xi20,True,-1)],Phif,1,method = 'moments',prec = working_prec, progress_bar = True)
-B = integrate_H1_many(G,[(xi11,False,1),(xi21,True,-1)],Phif,1,method = 'moments',prec = working_prec, progress_bar = True)
-D = integrate_H1_many(G,[(xi11,False,1),(xi21,True,-1)],Phig,1,method = 'moments',prec = working_prec, progress_bar = True)
+    A = A.trace()/A.parent().degree()
+    B = B.trace()/B.parent().degree()
+    D = D.trace()/D.parent().degree()
 
-A = (A + O(p**(prec+A.valuation()))).trace()/A.parent().degree()
-B = (B + O(p**(prec+B.valuation()))).trace()/B.parent().degree()
-D = (D + O(p**(prec+D.valuation()))).trace()/D.parent().degree()
+    fwrite('A = %s'%A,outfile)
+    fwrite('B = %s'%A,outfile)
+    fwrite('D = %s'%A,outfile)
+    fwrite('T = %s'%str(T.list()),outfile)
+    F = A.parent()
+    TF = T.change_ring(F)
+    a,b = p_adic_l_invariant(A,B,D,TF)
 
-F = A.parent()
-TF = T.change_ring(F)
-a1,b1 = p_adic_l_invariant(A,B,D,TF)
+    fwrite('a = %s'%a,outfile)
+    fwrite('b = %s'%b,outfile)
 
-# g0 = ker[3]**2
-# g1 = ker[0]**2*ker[3]
-# print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
-# print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
-
-
-# Below are precomputed values
-a = 3 + 3^3 + 3^4 + 2*3^7 + 3^9 + 3^10 + 3^11 + 2*3^12 + 3^14 + 3^15 + 2*3^17 + 3^18 + 2*3^20 + 3^22 + 3^23 + 3^24 + 3^27 + 2*3^28 + 2*3^29 + 3^30 + 3^31 + 2*3^32 + 2*3^36 + 2*3^38 + 3^39 + 3^40 + 3^41 + 2*3^45 + 3^46 + 3^47 + 2*3^48 + 2*3^50 + 3^52 + 2*3^55 + 3^56 + 3^57 + 2*3^58 + 2*3^59 + 3^60 + 3^64 + 2*3^69 + 3^70 + 2*3^71 + 2*3^73 + 2*3^74 + 3^76 + 3^77 + 3^79 + 3^80 + 3^81 + 2*3^82 + 3^83 + 3^85 + 2*3^86 + 2*3^87 + 2*3^88 + 2*3^89 + 2*3^90 + 2*3^91 + 2*3^92 + 3^95 + 2*3^98 + 2*3^100 + 2*3^102 + 2*3^103 + 3^106 + 2*3^107 + 2*3^108 + 2*3^109 + 2*3^110 + 3^111 + 2*3^112 + 2*3^114 + 2*3^116 + 3^117 + 2*3^119 + 3^120 + 3^121 + 3^123 + 2*3^124 + 3^126 + 3^127 + 2*3^129 + 2*3^132 + 3^133 + 3^134 + 3^135 + 2*3^137 + 3^138 + 2*3^139 + 3^141 + 3^142 + 2*3^144 + 2*3^145 + 2*3^146 + 3^148 + 3^150 + 2*3^151 + 2*3^153 + 3^154 + 2*3^155 + 3^156 + 3^158 + 3^159 + 2*3^160 + 2*3^161 + 2*3^162 + 2*3^163 + 3^165 + 2*3^166 + 2*3^167 + 3^170 + 3^172 + 3^174 + 2*3^175 + 3^176 + 2*3^177 + 3^178 + 3^180 + 3^181 + 2*3^182 + 2*3^183 + 2*3^184 + 2*3^185 + 3^186 + 3^187 + 3^188 + 2*3^189 + 2*3^190 + 2*3^191 + 3^192 + 3^193 + O(3^195)
-b = 2*3 + 3^5 + 3^6 + 3^7 + 3^8 + 3^9 + 3^10 + 2*3^11 + 3^12 + 3^13 + 3^14 + 3^15 + 3^16 + 3^18 + 2*3^19 + 3^20 + 3^21 + 3^22 + 3^23 + 3^25 + 2*3^26 + 2*3^29 + 2*3^30 + 3^34 + 3^35 + 3^36 + 3^37 + 3^38 + 2*3^39 + 2*3^41 + 2*3^42 + 3^44 + 3^46 + 3^47 + 2*3^48 + 3^49 + 3^51 + 2*3^54 + 2*3^55 + 3^56 + 3^58 + 2*3^60 + 2*3^65 + 2*3^68 + 3^69 + 2*3^71 + 2*3^73 + 2*3^76 + 3^79 + 2*3^80 + 3^82 + 3^83 + 3^84 + 2*3^85 + 2*3^87 + 2*3^88 + 3^89 + 2*3^94 + 3^96 + 3^97 + 2*3^98 + 3^100 + 2*3^104 + 2*3^106 + 2*3^107 + 2*3^108 + 3^109 + 3^110 + 2*3^111 + 2*3^112 + 3^114 + 2*3^117 + 3^118 + 2*3^119 + 3^120 + 3^121 + 3^122 + 2*3^124 + 3^125 + 3^128 + 3^129 + 2*3^130 + 3^131 + 3^135 + 3^136 + 2*3^137 + 2*3^139 + 2*3^140 + 3^141 + 2*3^142 + 2*3^143 + 3^145 + 2*3^146 + 2*3^150 + 3^151 + 2*3^152 + 3^153 + 3^155 + 2*3^156 + 3^157 + 2*3^160 + 2*3^161 + 2*3^163 + 2*3^167 + 2*3^170 + 3^173 + 2*3^175 + 2*3^176 + 3^177 + 3^178 + 3^182 + 3^184 + 3^185 + 2*3^186 + 3^187 + 2*3^188 + 3^190 + 2*3^192 + 3^194 + O(3^196)
-T =Matrix(ZZ,2,2,[-3,-5,-2,-4])
-
-inp_vec = [(a,b,T.transpose(),qords,195,P.ring()) for qords in all_possible_qords(T.transpose().change_ring(ZZ),10)]
-for inpt in inp_vec:
-    find_igusa_invariants_from_L_inv(*inpt)
-
-for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
-    if outt != 'Nope':
-        i2,i4,i6,i10 = list(outt)
-        print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
-        print outt
-    else:
-        print 'Finished %s...'%str(inpt[0][3])
+    fwrite('Trying to recognize invariants...',outfile)
+    phi = G._F_to_local
+    inp_vec = [(a,b,T.transpose(),qords,prec,P.ring(),None,phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ),20)]
+    for inpt in inp_vec:
+        ans = find_igusa_invariants_from_L_inv(*inpt)
+        if ans != 'Nope':
+            fwrite(str(ans),outfile)
+    fwrite('Done',outfile)
 
 
-# Here is the result:
-# There are more successes, this is the first (not the lowest height one)
-# Success with (0, 2, 2)
-# (16490, 1161961/4, 12864116757/8, 39530700) # Not the right curve
-# Success with (1, 0, 2)
-# (646, -18839/4, 4692747/8, 53905500)
+for inpt, outp in try_your_luck(candidate_list):
+    print 'Finished inpt = %s'%str(inpt)
 
-# Following is some magma code:
-# R<x>:=PolynomialRing(Rationals());
-# C:=HyperellipticCurveFromIgusaClebsch([646, -18839/4, 4692747/8, 53905500]:Reduce:=true);
-# J:=Jacobian(C);
-# Cgood := HyperellipticCurve(x^6 + 6*x^5 + 11*x^4 + 14*x^3 + 5*x^2 - 12*x);
-# Jgood := Jacobian(Cgood);
-# EulerFactor(J,GF(31)) eq EulerFactor(Jgood,GF(31));
+# # Below are precomputed values
+# a = 4*7 + 2*7^2 + 5*7^3 + 3*7^4 + 3*7^5 + 4*7^6 + 2*7^7 + 3*7^8 + 6*7^9 + 2*7^10 + 4*7^11 + 3*7^13 + 5*7^14 + 4*7^15 + 3*7^16 + 3*7^17 + 2*7^18 + 2*7^19 + 6*7^20 + 3*7^21 + 7^22 + 2*7^23 + 5*7^24 + 4*7^25 + 4*7^26 + 7^28 + 6*7^29 + 6*7^30 + 7^31 + 5*7^32 + 6*7^33 + 3*7^35 + 5*7^36 + 6*7^37 + 6*7^38 + 3*7^39 + 7^40 + 3*7^41 + 4*7^42 + 2*7^43 + 3*7^44 + 2*7^45 + 2*7^46 + 2*7^47 + 7^48 + 7^49 + 5*7^50 + 2*7^51 + 6*7^52 + 5*7^53 + 7^54 + 3*7^55 + 4*7^57 + 7^58 + 6*7^59 + 2*7^60 + 5*7^62 + 3*7^63 + 4*7^64 + 3*7^65 + 4*7^66 + 5*7^68 + 2*7^69 + 5*7^70 + 5*7^71 + 7^72 + 4*7^73 + 7^74 + 6*7^75 + 4*7^76 + 2*7^77 + 5*7^78 + 7^79 + 4*7^80 + 6*7^81 + 2*7^82 + 4*7^83 + 7^84 + 3*7^85 + 5*7^86 + 4*7^87 + 4*7^89 + 6*7^90 + 4*7^91 + 6*7^92 + 7^93 + 4*7^94 + 3*7^95 + 4*7^96 + 7^99 + 5*7^101 + 6*7^102 + 4*7^104 + 2*7^105 + 7^106 + 5*7^107 + 3*7^108 + 6*7^109 + 7^110 + 6*7^111 + 6*7^112 + 4*7^113 + 6*7^114 + 5*7^115 + 2*7^116 + 2*7^118 + 5*7^119 + 6*7^120 + 5*7^123 + 6*7^124 + 3*7^125 + 5*7^127 + 4*7^128 + 3*7^131 + 5*7^132 + 5*7^133 + 5*7^134 + 4*7^135 + 5*7^137 + 4*7^138 + 6*7^139 + 5*7^140 + 2*7^141 + 3*7^143 + 2*7^144 + 5*7^145 + 2*7^146 + 5*7^147 + 7^148 + 2*7^149 + 7^150 + 4*7^151 + 4*7^152 + 3*7^154 + 3*7^155 + 7^156 + 2*7^157 + 5*7^158 + 3*7^159 + 2*7^160 + 2*7^161 + 4*7^162 + 4*7^163 + 3*7^164 + 6*7^167 + 3*7^168 + 2*7^169 + 4*7^171 + 7^172 + 7^173 + 5*7^174 + 4*7^175 + 2*7^176 + 6*7^177 + 7^178 + 4*7^179 + 6*7^180 + 6*7^181 + 5*7^182 + 4*7^184 + 6*7^185 + 2*7^186 + 3*7^188 + 4*7^189 + 4*7^190 + 5*7^191 + 7^192 + 3*7^193 + 3*7^195 + 6*7^196 + 3*7^197 + O(7^200)
+# b = 7^2 + 6*7^4 + 2*7^5 + 2*7^6 + 6*7^7 + 5*7^8 + 2*7^9 + 6*7^10 + 3*7^11 + 2*7^12 + 3*7^13 + 2*7^14 + 2*7^15 + 5*7^16 + 2*7^18 + 5*7^19 + 5*7^20 + 5*7^21 + 7^22 + 7^24 + 2*7^25 + 3*7^26 + 6*7^27 + 7^28 + 7^29 + 5*7^30 + 3*7^32 + 6*7^33 + 6*7^34 + 7^35 + 4*7^36 + 5*7^37 + 6*7^38 + 5*7^39 + 2*7^40 + 6*7^41 + 2*7^42 + 6*7^45 + 2*7^46 + 2*7^47 + 2*7^48 + 5*7^49 + 5*7^50 + 3*7^51 + 2*7^52 + 6*7^53 + 2*7^54 + 5*7^55 + 3*7^56 + 5*7^57 + 5*7^58 + 5*7^59 + 5*7^60 + 5*7^61 + 6*7^62 + 6*7^63 + 4*7^64 + 2*7^65 + 7^66 + 4*7^67 + 4*7^68 + 2*7^69 + 6*7^70 + 7^71 + 6*7^72 + 6*7^73 + 7^75 + 2*7^76 + 6*7^77 + 3*7^78 + 2*7^79 + 7^82 + 5*7^83 + 5*7^84 + 6*7^85 + 2*7^86 + 2*7^87 + 3*7^88 + 4*7^89 + 3*7^90 + 3*7^92 + 7^93 + 2*7^94 + 4*7^95 + 5*7^96 + 6*7^97 + 7^98 + 4*7^99 + 6*7^100 + 6*7^101 + 3*7^103 + 5*7^104 + 5*7^105 + 5*7^106 + 2*7^107 + 3*7^109 + 5*7^111 + 4*7^112 + 4*7^113 + 4*7^115 + 7^116 + 6*7^117 + 2*7^118 + 2*7^120 + 5*7^122 + 2*7^123 + 7^124 + 2*7^125 + 7^126 + 7^127 + 2*7^128 + 2*7^129 + 5*7^130 + 6*7^131 + 3*7^132 + 6*7^134 + 3*7^135 + 5*7^136 + 5*7^137 + 2*7^138 + 4*7^139 + 4*7^141 + 3*7^142 + 6*7^143 + 6*7^144 + 3*7^147 + 6*7^148 + 4*7^150 + 4*7^151 + 6*7^152 + 7^153 + 6*7^154 + 6*7^156 + 7^157 + 6*7^158 + 6*7^159 + 2*7^160 + 5*7^161 + 5*7^162 + 3*7^163 + 5*7^164 + 2*7^165 + 2*7^166 + 3*7^167 + 2*7^168 + 2*7^169 + 7^170 + 2*7^171 + 5*7^172 + 5*7^173 + 7^174 + 4*7^175 + 2*7^176 + 5*7^178 + 2*7^179 + 2*7^180 + 2*7^181 + 3*7^182 + 4*7^183 + 6*7^184 + 2*7^185 + 4*7^186 + 6*7^187 + 3*7^188 + 4*7^189 + 5*7^190 + 2*7^191 + 7^192 + 7^193 + 2*7^194 + 5*7^195 + 5*7^196 + 7^197 + 2*7^199 + O(7^200)
+# T =Matrix(ZZ,2,2,[-1, 2, 5, 0])
 
-# IsIsomorphic(C,Cgood);
-# false
-# IsQuadraticTwist(C,Cgood):
-# true -1
-
+# for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
+#     if outt != 'Nope':
+#         try:
+#             i2,i4,i6,i10 = list(outt)
+#             print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
+#         except ValueError:
+#             print outt
+#     else:
+#         print 'Finished %s...'%str(inpt[0][3])
 
 
