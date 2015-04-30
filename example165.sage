@@ -116,12 +116,28 @@ b = 7*11^2 + 3*11^3 + 5*11^4 + 2*11^5 + 4*11^6 + 8*11^8 + 11^9 + 8*11^10 + 7*11^
 T =Matrix(ZZ,2,2,[-3,-2,1,1])
 
 
-inp_vec = [(a,b,T.transpose(),qords,50) for qords in all_possible_qords(T.transpose().change_ring(ZZ),10)]
+allmats = []
+from itertools import product
+for aa,bb,cc,dd in product(range(-1,2),repeat = 4):
+    m = matrix(ZZ,2,2,[aa,bb,cc,dd])
+    if m.determinant() == 1:
+        allmats.append(m**-1 * T * m)
+from operator import methodcaller
+allmats =  sorted(allmats,key=methodcaller('norm'))
+for o in allmats:
+    o.set_immutable()
+allmats = list(set(allmats))
+
+TT = allmats[0]
+inp_vec = [(a,b,TT.transpose(),qords,prec,QQ,None,None) for qords in all_possible_qords(TT.transpose().change_ring(ZZ),20)]
+
 for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
     if outt != 'Nope':
-        i2,i4,i6,i10 = list(outt)
-        print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
-        print outt
+        try:
+            i2,i4,i6,i10 = list(outt)
+            print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
+        except ValueError:
+            print outt
     else:
         print 'Finished %s...'%str(inpt[0][3])
 
