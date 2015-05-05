@@ -260,14 +260,17 @@ def ComputeRootFromApprox(f,x0, prec):
         xn = xnn
     return xn
 
-def recognize_j1(j1,base = QQ,phi = None,threshold = 0.9):
+def recognize_j1(j1,base = QQ,phi = None,threshold = 0.9,prec = None):
     deg = base.degree()
     Kp = j1.parent()
     p = Kp.prime()
     if phi is None:
         phi = lambda t:t
     threshold = threshold * RR(p).log(10)
-    j1 = p**-j1.valuation() * j1
+    j1val = j1.valuation()
+    j1 = p**-j1val * j1
+    if prec is not None:
+        j1 = Qp(p,prec)(j1.lift())
     fx = algdep(j1,deg)
     if height_polynomial(fx) < threshold * j1.precision_relative():
         try:
@@ -364,7 +367,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
                     return (oq1,oq2,oq3,1)
             else:
                 # return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
-                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90))
+                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = prec))
         except ValueError:
             pass
         except Exception as e:
