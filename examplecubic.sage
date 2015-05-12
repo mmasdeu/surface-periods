@@ -25,9 +25,8 @@ candidate_list =[('129_0', x^3 - x^2 + 2*x - 3, r, r^2 - r + 1, 1, [-1]),
                  (236, x^3 - x^2 - 5*x + 8, -r + 2, -r^2 - r + 3, 1, [-1]),
                  (269, x^3 - x^2 - 3*x - 4, r^2 - 2*r - 2, -r - 1, 1, [-1]),
                  (277, x^3 - 5, r^2 + 2*r + 3, r - 2, 1, [-1]),
-                 (465, x^4 - 2*x - 1, -r^3 + r^2 + r + 2, 1, r^3 - 1, [-1, -1])]
-
-candidate_list = [(536, x^4 + 2*x^2 - x - 1, r^3 + 3*r, -r^3 - r^2 - 3*r, 1, [-1, -1]),
+                 (465, x^4 - 2*x - 1, -r^3 + r^2 + r + 2, 1, r^3 - 1, [-1, -1]),
+                 (536, x^4 + 2*x^2 - x - 1, r^3 + 3*r, -r^3 - r^2 - 3*r, 1, [-1, -1]),
                   (557, x^4 - x^3 + x^2 - 2*x - 1, r^2 - r + 1, -r^3 + 2*r^2 - r + 2, 1, [-1, -1]),
                   (547, x^4 - x^3 + x - 2, r^2 + 1, r^2 + 2, 1, [-1, -1]),
                   (608, x^4 - x^3 + 3*x - 1, r^3 - r + 3, r^3 + 1, 1, [-1, -1]),
@@ -105,79 +104,7 @@ candidate_list = [(536, x^4 + 2*x^2 - x - 1, r^3 + 3*r, -r^3 - r^2 - 3*r, 1, [-1
                   (1140, x^4 - x^3 - 3*x^2 - x + 2, r, -r + 3, 1, [-1, -1])]
 
 
-def try_your_luck(code,pol,Pgen,Dgen,Npgen,Sinf,outfile = None):
-    if outfile is None:
-        outfile = 'out_try_luck_cubic_%s.txt'%code
-    fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
-    F.<r> = NumberField(pol)
-    r = F.gen()
-    P = F.ideal(Pgen)
-    D = F.ideal(Dgen)
-    Np = F.ideal(Npgen)
-    Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
-    abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
-
-    G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
-    Coh = CohomologyGroup(G.Gpn)
-    fwrite('Computed Cohomology group',outfile)
-    flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
-    fwrite('Obtained cocycle',outfile)
-    ell, T = hecke_data[0]
-    g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
-
-    fwrite('Obtained homology generators',outfile)
-    from homology import lattice_homology_cycle
-    xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
-    xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
-    fwrite('Defined homology cycles',outfile)
-    Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
-    Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
-    fwrite('Overconvergent lift completed',outfile)
-    from integrals import integrate_H1
-    num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    A = num/den
-    fwrite('Finished computation of A period',outfile)
-    num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    B = num/den
-    fwrite('Finished computation of B period',outfile)
-
-    num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    D = num/den
-    fwrite('Finished computation of D period',outfile)
-
-    A = A.add_bigoh(prec + A.valuation())
-    B = B.add_bigoh(prec + B.valuation())
-    D = D.add_bigoh(prec + D.valuation())
-
-    A = A.trace()/A.parent().degree()
-    B = B.trace()/B.parent().degree()
-    D = D.trace()/D.parent().degree()
-
-    fwrite('A = %s'%A,outfile)
-    fwrite('B = %s'%A,outfile)
-    fwrite('D = %s'%A,outfile)
-    fwrite('T = %s'%str(T.list()),outfile)
-    F = A.parent()
-    TF = T.change_ring(F)
-    a,b = p_adic_l_invariant(A,B,D,TF)
-
-    fwrite('a = %s'%a,outfile)
-    fwrite('b = %s'%b,outfile)
-
-    fwrite('Trying to recognize invariants...',outfile)
-    phi = G._F_to_local
-    inp_vec = [(a,b,T.transpose(),qords,prec,P.ring(),None,phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ),20)]
-    for inpt in inp_vec:
-        ans = find_igusa_invariants_from_L_inv(*inpt)
-        if ans != 'Nope':
-            fwrite(str(ans),outfile)
-    fwrite('Done',outfile)
-
-
-for inpt, outp in parallel(try_your_luck, timeout = 10 * 3600)(candidate_list):
+for inpt, outp in parallel(lambda a,b,c,d,e,f:guess_equation(a,b,c,d,e,f,sign,prec,working_prec), timeout = 5 * 3600)(candidate_list):
     print 'Finished inpt = %s'%str(inpt)
 
 # # Below are precomputed values
@@ -216,40 +143,3 @@ for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
 
 for inpt in inp_vec:
     find_igusa_invariants_from_L_inv(*inpt)
-
-T = Matrix(ZZ,2,2,[1, -1, -1, 2])
-prec = 300
-a = 2*11^2 + 10*11^3 + 9*11^4 + 9*11^5 + 5*11^6 + 7*11^7 + 11^8 + 9*11^9 + 5*11^10 + 7*11^12 + 6*11^14 + 7*11^16 + 7*11^17 + 11^18 + 10*11^19 + 8*11^20 + 4*11^21 + 7*11^22 + 11^23 + 9*11^24 + 2*11^26 + 5*11^27 + 8*11^28 + 11^29 + 4*11^30 + 6*11^31 + 9*11^32 + 7*11^33 + 2*11^34 + 3*11^35 + 10*11^36 + 4*11^37 + 4*11^38 + 2*11^39 + 6*11^40 + 6*11^41 + 8*11^42 + 3*11^43 + 9*11^44 + 4*11^46 + 9*11^47 + 11^48 + 6*11^49 + 4*11^50 + 2*11^51 + 8*11^52 + 11^53 + 9*11^54 + 10*11^55 + 7*11^56 + 7*11^57 + 8*11^58 + 6*11^59 + 10*11^60 + 4*11^61 + 4*11^63 + 11^64 + 5*11^65 + 2*11^66 + 4*11^67 + 11^68 + 6*11^69 + 3*11^70 + 11^71 + 10*11^72 + 10*11^73 + 3*11^74 + 9*11^76 + 8*11^77 + 10*11^79 + 3*11^80 + 3*11^81 + 7*11^82 + 2*11^83 + 3*11^84 + 9*11^85 + 2*11^86 + 6*11^88 + 3*11^89 + 2*11^90 + 2*11^91 + 8*11^92 + 9*11^94 + 3*11^95 + 9*11^96 + 10*11^97 + 8*11^98 + 7*11^99 + 3*11^100 + 7*11^102 + 6*11^103 + 2*11^104 + 2*11^105 + 2*11^106 + 6*11^107 + 5*11^109 + 9*11^110 + 5*11^111 + 3*11^112 + 7*11^113 + 8*11^114 + 2*11^115 + 11^116 + 2*11^117 + 10*11^118 + 9*11^119 + 5*11^120 + 4*11^121 + 7*11^122 + 4*11^123 + 2*11^124 + 6*11^125 + 6*11^126 + 4*11^127 + 9*11^128 + 6*11^130 + 11^131 + 11^132 + 10*11^133 + 7*11^134 + 7*11^136 + 4*11^137 + 2*11^138 + 9*11^139 + 6*11^140 + 6*11^141 + 6*11^142 + 4*11^143 + 2*11^144 + 6*11^145 + 7*11^146 + 2*11^147 + 11^148 + 8*11^149 + 4*11^152 + 3*11^153 + 6*11^155 + 3*11^156 + 8*11^157 + 3*11^158 + 6*11^159 + 9*11^160 + 10*11^162 + 5*11^163 + 10*11^164 + 10*11^165 + 2*11^166 + 11^167 + 8*11^168 + 9*11^169 + 10*11^170 + 10*11^171 + 5*11^173 + 11^174 + 3*11^175 + 11^177 + 10*11^178 + 7*11^179 + 11^180 + 7*11^181 + 11^182 + 9*11^183 + 4*11^184 + 5*11^185 + 8*11^186 + 10*11^187 + 4*11^188 + 6*11^189 + 2*11^190 + 8*11^191 + 3*11^192 + 10*11^193 + 8*11^194 + 6*11^195 + 11^196 + 6*11^197 + 6*11^198 + 10*11^199 + 3*11^200 + 10*11^201 + 11^202 + 7*11^204 + 10*11^205 + 3*11^206 + 6*11^207 + 11^208 + 9*11^209 + 7*11^210 + 3*11^211 + 6*11^212 + 8*11^213 + 9*11^214 + 3*11^215 + 3*11^216 + 10*11^217 + 7*11^218 + 11^219 + 2*11^220 + 8*11^221 + 7*11^224 + 9*11^225 + 4*11^226 + 2*11^227 + 9*11^228 + 2*11^229 + 9*11^230 + 7*11^231 + 2*11^232 + 4*11^233 + 2*11^234 + 11^235 + 11^236 + 6*11^237 + 11^238 + 2*11^239 + 7*11^240 + 2*11^241 + 2*11^242 + 6*11^243 + 6*11^244 + 6*11^245 + 3*11^246 + 6*11^247 + 6*11^248 + 11^249 + 9*11^250 + 2*11^251 + 11^253 + 10*11^254 + 3*11^255 + 9*11^256 + 7*11^257 + 10*11^258 + 4*11^259 + 9*11^260 + 5*11^261 + 3*11^262 + 4*11^263 + 11^265 + 5*11^266 + 8*11^267 + 8*11^268 + 3*11^269 + 6*11^270 + 11^271 + 5*11^273 + 10*11^274 + 5*11^275 + 8*11^276 + 10*11^277 + 3*11^278 + 6*11^279 + 9*11^280 + 7*11^281 + 7*11^282 + 11^284 + 2*11^285 + 2*11^286 + 11^287 + 11^288 + 6*11^289 + 6*11^290 + 7*11^291 + 3*11^292 + 5*11^293 + 11^294 + 5*11^295 + 8*11^296 + 10*11^297 + 9*11^298 + O(11^299)
-b = 3*11 + 5*11^3 + 7*11^4 + 9*11^5 + 9*11^6 + 3*11^7 + 6*11^8 + 11^9 + 11^10 + 7*11^11 + 7*11^12 + 4*11^13 + 11^14 + 11^15 + 8*11^16 + 7*11^17 + 9*11^19 + 10*11^20 + 7*11^21 + 6*11^22 + 9*11^23 + 4*11^24 + 2*11^25 + 3*11^26 + 7*11^27 + 6*11^29 + 2*11^30 + 8*11^31 + 4*11^32 + 7*11^33 + 5*11^34 + 9*11^35 + 4*11^36 + 10*11^37 + 9*11^38 + 2*11^39 + 9*11^40 + 6*11^41 + 9*11^43 + 3*11^45 + 5*11^46 + 2*11^47 + 8*11^48 + 10*11^49 + 6*11^50 + 3*11^51 + 6*11^52 + 9*11^53 + 11^54 + 9*11^56 + 11^57 + 10*11^58 + 6*11^59 + 8*11^60 + 7*11^61 + 5*11^62 + 5*11^63 + 9*11^64 + 6*11^65 + 6*11^66 + 4*11^67 + 11^69 + 2*11^70 + 4*11^71 + 8*11^72 + 11^73 + 10*11^74 + 8*11^75 + 3*11^76 + 11^77 + 4*11^78 + 2*11^79 + 11^80 + 10*11^81 + 6*11^82 + 10*11^83 + 9*11^84 + 9*11^85 + 10*11^86 + 9*11^88 + 11^89 + 4*11^90 + 5*11^91 + 6*11^92 + 3*11^95 + 11^96 + 10*11^97 + 5*11^98 + 11^99 + 6*11^100 + 2*11^102 + 10*11^103 + 10*11^104 + 10*11^105 + 7*11^106 + 7*11^107 + 7*11^108 + 6*11^109 + 8*11^110 + 11^111 + 6*11^113 + 10*11^114 + 9*11^116 + 6*11^117 + 9*11^118 + 7*11^119 + 8*11^120 + 10*11^121 + 3*11^122 + 7*11^123 + 8*11^124 + 10*11^125 + 7*11^126 + 8*11^127 + 8*11^128 + 4*11^129 + 3*11^130 + 5*11^131 + 10*11^132 + 7*11^133 + 5*11^134 + 11^135 + 2*11^136 + 8*11^138 + 2*11^139 + 9*11^140 + 6*11^141 + 10*11^142 + 6*11^143 + 8*11^145 + 2*11^146 + 8*11^147 + 11^150 + 2*11^151 + 3*11^152 + 10*11^154 + 5*11^155 + 3*11^156 + 10*11^157 + 11^158 + 11^159 + 4*11^160 + 9*11^161 + 2*11^162 + 8*11^163 + 9*11^164 + 11^165 + 9*11^166 + 8*11^167 + 5*11^168 + 6*11^169 + 11^170 + 4*11^171 + 11^172 + 10*11^173 + 8*11^174 + 3*11^175 + 3*11^176 + 8*11^177 + 9*11^178 + 6*11^179 + 9*11^180 + 2*11^181 + 3*11^182 + 6*11^183 + 5*11^184 + 6*11^185 + 9*11^186 + 4*11^187 + 9*11^188 + 11^189 + 11^190 + 10*11^191 + 3*11^192 + 11^193 + 5*11^194 + 8*11^196 + 11^197 + 8*11^198 + 8*11^199 + 4*11^200 + 2*11^201 + 7*11^202 + 10*11^203 + 5*11^204 + 2*11^206 + 5*11^207 + 9*11^208 + 8*11^209 + 9*11^210 + 10*11^211 + 11^213 + 9*11^214 + 2*11^215 + 4*11^216 + 4*11^218 + 7*11^219 + 11^220 + 5*11^221 + 6*11^222 + 2*11^223 + 6*11^225 + 4*11^226 + 9*11^227 + 6*11^228 + 9*11^229 + 5*11^230 + 9*11^231 + 10*11^232 + 4*11^233 + 11^234 + 4*11^235 + 7*11^236 + 8*11^237 + 5*11^238 + 8*11^239 + 3*11^241 + 5*11^242 + 5*11^243 + 11^244 + 3*11^245 + 10*11^246 + 4*11^247 + 6*11^248 + 2*11^249 + 7*11^250 + 11^251 + 5*11^252 + 10*11^253 + 10*11^254 + 2*11^255 + 3*11^257 + 7*11^258 + 7*11^259 + 5*11^260 + 2*11^261 + 9*11^262 + 3*11^263 + 7*11^264 + 7*11^265 + 4*11^266 + 10*11^267 + 9*11^268 + 4*11^269 + 4*11^270 + 7*11^271 + 3*11^272 + 9*11^273 + 9*11^274 + 11^275 + 2*11^276 + 3*11^278 + 10*11^279 + 7*11^280 + 7*11^281 + 10*11^282 + 7*11^283 + 9*11^285 + 5*11^286 + 11^287 + 2*11^288 + 3*11^289 + 9*11^290 + 11^292 + 7*11^293 + 7*11^294 + 3*11^297 + O(11^299)
-#Starting computation for candidate (1048, x^4 + 5*x^2 - 3, 1/2*r^2 - 1/2*r + 5/2, 1, 1, [-1, -1])
-
-F.<r> = NumberField(x^4 + 5*x^2 - 3)
-P = F.ideal( 1/2*r^2 - 1/2*r + 5/2)
-p = P.norm()
-Fp = Qp(p,prec)
-phi =  F.hom([F.gen().minpoly().change_ring(Fp).roots()[0][0]])
-
-fT = T.charpoly()
-allmats = []
-for aa,bb,cc,dd in product(range(-6,7),repeat = 4):
-    m = matrix(ZZ,2,2,[aa,bb,cc,dd])
-    if m.charpoly() == fT:
-        print m
-        allmats.append(m)
-
-from operator import methodcaller
-inp_vec = [(a,b,TT.transpose(),qords,prec,P.ring(),None,phi) for TT in sorted(allmats,key=methodcaller('norm')) for qords in all_possible_qords(TT.transpose().change_ring(ZZ),5)]
-
-
-for inpt, outt in find_igusa_invariants_from_L_inv(inp_vec):
-    if outt != 'Nope':
-        try:
-            i2,i4,i6,i10 = list(outt)
-            # print 'Success with %s (%s, %s, %s)'%(str(inpt[0][3]),i2**5/i10,i2**3*i4/i10,i2**2*i6/i10)
-            print 'Success with %s (%s)'%(str(inpt[0][3]),i10)
-            fwrite('Success with %s (%s)'%(str(inpt[0][3]),i10),'great_successes.txt')
-        except ValueError:
-            print outt
-            fwrite(outt,'great_successes.txt')
-    else:
-        print 'Finished %s...'%str(inpt[0][3])

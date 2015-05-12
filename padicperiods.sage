@@ -379,3 +379,76 @@ def euler_factor_twodim(p,T):
     t = T.trace()
     n = T.determinant()
     return x**4 - t*x**3 + (2*p+n)*x**2 - p*t*x + p*p
+
+
+
+def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfile = None):
+    if outfile is None:
+        outfile = 'out_try_luck_cubic_%s.txt'%code
+    fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
+    F.<r> = NumberField(pol)
+    r = F.gen()
+    P = F.ideal(Pgen)
+    D = F.ideal(Dgen)
+    Np = F.ideal(Npgen)
+    Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
+    abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
+
+    G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
+    Coh = CohomologyGroup(G.Gpn)
+    fwrite('Computed Cohomology group',outfile)
+    flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
+    fwrite('Obtained cocycle',outfile)
+    ell, T = hecke_data[0]
+    g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
+
+    fwrite('Obtained homology generators',outfile)
+    from homology import lattice_homology_cycle
+    xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
+    xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+    fwrite('Defined homology cycles',outfile)
+    Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
+    Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
+    fwrite('Overconvergent lift completed',outfile)
+    from integrals import integrate_H1
+    num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    A = num/den
+    fwrite('Finished computation of A period',outfile)
+    num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    B = num/den
+    fwrite('Finished computation of B period',outfile)
+
+    num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
+    den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
+    D = num/den
+    fwrite('Finished computation of D period',outfile)
+
+    A = A.trace()/A.parent().degree()
+    B = B.trace()/B.parent().degree()
+    D = D.trace()/D.parent().degree()
+
+    A = A.add_bigoh(prec + A.valuation())
+    B = B.add_bigoh(prec + B.valuation())
+    D = D.add_bigoh(prec + D.valuation())
+
+    fwrite('A = %s'%A,outfile)
+    fwrite('B = %s'%B,outfile)
+    fwrite('D = %s'%D,outfile)
+    fwrite('T = %s'%str(T.list()),outfile)
+    F = A.parent()
+    TF = T.change_ring(F)
+    a,b = p_adic_l_invariant(A,B,D,TF)
+
+    fwrite('a = %s'%a,outfile)
+    fwrite('b = %s'%b,outfile)
+
+    fwrite('Trying to recognize invariants...',outfile)
+    phi = G._F_to_local
+    inp_vec = [(a,b,T.transpose(),qords,prec,P.ring(),None,phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ),20)]
+    for inpt in inp_vec:
+        ans = find_igusa_invariants_from_L_inv(*inpt)
+        if ans != 'Nope':
+            fwrite(str(ans),outfile)
+    fwrite('Done',outfile)
