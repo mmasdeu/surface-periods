@@ -59,6 +59,7 @@ def Theta(p1,p2,p3,version = None,prec = None):
     else:
         raise ValueError("Wrong version? version = %s"%version)
     res = 0
+    assert imax > 0
     for i in range(-imax,imax + 1):
         jmax = RR(prec - .25 - i**2 +RR(i).abs())
         if jmax < 0:
@@ -90,9 +91,9 @@ def Theta(p1,p2,p3,version = None,prec = None):
     else:
         return res
 
-
 def lambdavec(p1, p2, p3, prec):
     th = Theta(p1,p2,p3,prec = prec)
+
     num = th['3p3m'] * th['2m3p']
     den = th['2p2m'] * th['2p3m']
     try:
@@ -118,8 +119,8 @@ def lambdavec(p1, p2, p3, prec):
     l3 = (num/den)**2
     return (l1,l2,l3)
 
-def lambdavec_padic(p1, p2, p3):
-    th = Theta(p1,p2,p3,prec = None)
+def lambdavec_padic(p1, p2, p3,prec = None):
+    th = Theta(p1,p2,p3,prec = prec)
     num = th['3p3m'] * th['2m3p']
     den = th['2p2m'] * th['2p3m']
     l1 = (num/den)**2
@@ -149,8 +150,8 @@ def xvec(p1, p2, p3, prec):
     x1 = 1/den
     return (x1,x2,x3)
 
-def xvec_padic(p1, p2, p3):
-    l1,l2,l3 = lambdavec_padic(p1,p2,p3)
+def xvec_padic(p1, p2, p3,prec = None):
+    l1,l2,l3 = lambdavec_padic(p1,p2,p3,prec)
     return (1/(1-l1),1 - 1/l2,l3)
 
 def ICI_static(x1,x2,x3):
@@ -168,7 +169,7 @@ def ICI_static(x1,x2,x3):
     I10 = x18*x26*x34 - 2*x17*x27*x34 + x16*x28*x34 - 2*x18*x25*x35 + 2*x17*x26*x35 + 2*x16*x27*x35 - 2*x15*x28*x35 + x18*x24*x36 + 2*x17*x25*x36 - 6*x16*x26*x36 + 2*x15*x27*x36 + x14*x28*x36 - 2*x17*x24*x37 + 2*x16*x25*x37 + 2*x15*x26*x37 - 2*x14*x27*x37 + x16*x24*x38 - 2*x15*x25*x38 + x14*x26*x38 - 2*x18*x26*x33 + 4*x17*x27*x33 - 2*x16*x28*x33 + 2*x18*x25*x34 - 2*x17*x26*x34 - 2*x16*x27*x34 + 2*x15*x28*x34 + 2*x18*x24*x35 - 4*x17*x25*x35 + 4*x16*x26*x35 - 4*x15*x27*x35 + 2*x14*x28*x35 - 2*x18*x23*x36 - 2*x17*x24*x36 + 4*x16*x25*x36 + 4*x15*x26*x36 - 2*x14*x27*x36 - 2*x13*x28*x36 + 4*x17*x23*x37 - 2*x16*x24*x37 - 4*x15*x25*x37 - 2*x14*x26*x37 + 4*x13*x27*x37 - 2*x16*x23*x38 + 2*x15*x24*x38 + 2*x14*x25*x38 - 2*x13*x26*x38 + x18*x26*x32 - 2*x17*x27*x32 + x16*x28*x32 + 2*x18*x25*x33 - 2*x17*x26*x33 - 2*x16*x27*x33 + 2*x15*x28*x33 - 6*x18*x24*x34 + 4*x17*x25*x34 + 4*x16*x26*x34 + 4*x15*x27*x34 - 6*x14*x28*x34 + 2*x18*x23*x35 + 4*x17*x24*x35 - 6*x16*x25*x35 - 6*x15*x26*x35 + 4*x14*x27*x35 + 2*x13*x28*x35 + x18*x22*x36 - 2*x17*x23*x36 + 4*x16*x24*x36 - 6*x15*x25*x36 + 4*x14*x26*x36 - 2*x13*x27*x36 + x12*x28*x36 - 2*x17*x22*x37 - 2*x16*x23*x37 + 4*x15*x24*x37 + 4*x14*x25*x37 - 2*x13*x26*x37 - 2*x12*x27*x37 + x16*x22*x38 + 2*x15*x23*x38 - 6*x14*x24*x38 + 2*x13*x25*x38 + x12*x26*x38 - 2*x18*x25*x32 + 2*x17*x26*x32 + 2*x16*x27*x32 - 2*x15*x28*x32 + 2*x18*x24*x33 - 4*x17*x25*x33 + 4*x16*x26*x33 - 4*x15*x27*x33 + 2*x14*x28*x33 + 2*x18*x23*x34 + 4*x17*x24*x34 - 6*x16*x25*x34 - 6*x15*x26*x34 + 4*x14*x27*x34 + 2*x13*x28*x34 - 2*x18*x22*x35 - 4*x17*x23*x35 - 6*x16*x24*x35 + 24*x15*x25*x35 - 6*x14*x26*x35 - 4*x13*x27*x35 - 2*x12*x28*x35 + 2*x17*x22*x36 + 4*x16*x23*x36 - 6*x15*x24*x36 - 6*x14*x25*x36 + 4*x13*x26*x36 + 2*x12*x27*x36 + 2*x16*x22*x37 - 4*x15*x23*x37 + 4*x14*x24*x37 - 4*x13*x25*x37 + 2*x12*x26*x37 - 2*x15*x22*x38 + 2*x14*x23*x38 + 2*x13*x24*x38 - 2*x12*x25*x38 + x18*x24*x32 + 2*x17*x25*x32 - 6*x16*x26*x32 + 2*x15*x27*x32 + x14*x28*x32 - 2*x18*x23*x33 - 2*x17*x24*x33 + 4*x16*x25*x33 + 4*x15*x26*x33 - 2*x14*x27*x33 - 2*x13*x28*x33 + x18*x22*x34 - 2*x17*x23*x34 + 4*x16*x24*x34 - 6*x15*x25*x34 + 4*x14*x26*x34 - 2*x13*x27*x34 + x12*x28*x34 + 2*x17*x22*x35 + 4*x16*x23*x35 - 6*x15*x24*x35 - 6*x14*x25*x35 + 4*x13*x26*x35 + 2*x12*x27*x35 - 6*x16*x22*x36 + 4*x15*x23*x36 + 4*x14*x24*x36 + 4*x13*x25*x36 - 6*x12*x26*x36 + 2*x15*x22*x37 - 2*x14*x23*x37 - 2*x13*x24*x37 + 2*x12*x25*x37 + x14*x22*x38 - 2*x13*x23*x38 + x12*x24*x38 - 2*x17*x24*x32 + 2*x16*x25*x32 + 2*x15*x26*x32 - 2*x14*x27*x32 + 4*x17*x23*x33 - 2*x16*x24*x33 - 4*x15*x25*x33 - 2*x14*x26*x33 + 4*x13*x27*x33 - 2*x17*x22*x34 - 2*x16*x23*x34 + 4*x15*x24*x34 + 4*x14*x25*x34 - 2*x13*x26*x34 - 2*x12*x27*x34 + 2*x16*x22*x35 - 4*x15*x23*x35 + 4*x14*x24*x35 - 4*x13*x25*x35 + 2*x12*x26*x35 + 2*x15*x22*x36 - 2*x14*x23*x36 - 2*x13*x24*x36 + 2*x12*x25*x36 - 2*x14*x22*x37 + 4*x13*x23*x37 - 2*x12*x24*x37 + x16*x24*x32 - 2*x15*x25*x32 + x14*x26*x32 - 2*x16*x23*x33 + 2*x15*x24*x33 + 2*x14*x25*x33 - 2*x13*x26*x33 + x16*x22*x34 + 2*x15*x23*x34 - 6*x14*x24*x34 + 2*x13*x25*x34 + x12*x26*x34 - 2*x15*x22*x35 + 2*x14*x23*x35 + 2*x13*x24*x35 - 2*x12*x25*x35 + x14*x22*x36 - 2*x13*x23*x36 + x12*x24*x36
     return I2, I4, I6, I10
 
-def IgusaClebschFromHalfPeriods(a, b, c, prec = None):
+def IgusaClebschFromHalfPeriods(a, b, c, prec = None, padic = True):
     if a.valuation() == 0:
         a, c = c, a
     elif b.valuation() == 0:
@@ -177,8 +178,8 @@ def IgusaClebschFromHalfPeriods(a, b, c, prec = None):
         a,b,c = 1/a, 1/b, 1/c
     if a.valuation() <= 0 or b.valuation() <= 0 or c.valuation() < 0:
         raise RuntimeError
-    if prec is None:
-        return ICI_static(*xvec_padic(a,b,c))
+    if padic or prec is None:
+        return ICI_static(*xvec_padic(a,b,c,prec))
     else:
         return ICI_static(*xvec(a,b,c,prec))
 
@@ -211,36 +212,36 @@ def all_possible_qords(Tmatrix,N,initial = None):
     x, y, z, t = [ZZ(o) for o in Tmatrix.list()]
     r = x+y-z-t
     ans = set([])
-    if z != 0:
-        # Know that q1^z = q2^y q3^r
-        for ordq2, ordq3 in product(range(N+1),repeat = 2):
-            ordq1 = ZZ(y * ordq2 + r * ordq3)
-            if ordq1 % z != 0:
-                continue
-            ordq1 /= z
-            ordtup = [ordq1,ordq2,ordq3]
-            if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
-                ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
-    if y != 0:
-        # Know that q2^y = q1^z q3^-r
-        for ordq1, ordq3 in product(range(N+1),repeat = 2):
-            ordq2 = ZZ(z * ordq1 - r * ordq3)
-            if ordq2 % y != 0:
-                continue
-            ordq2 /= y
-            ordtup = [ordq1,ordq2,ordq3]
-            if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
-                ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
-    if r != 0:
-        # Know that q3^r = q1^z q2^-y
-        for ordq1, ordq2 in product(range(N+1),repeat = 2):
-            ordq3 = ZZ(z * ordq1 - y * ordq2)
-            if ordq3 % r != 0:
-                continue
-            ordq3 /= r
-            ordtup = [ordq1,ordq2,ordq3]
-            if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
-                ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
+    # Note: since we assume that the minimal polynomial is irreducible,
+    # we already know that z*y*r != 0
+
+    # Know that q1^z = q2^y q3^r
+    for ordq2, ordq3 in product(range(N+1),repeat = 2):
+        ordq1 = ZZ(y * ordq2 + r * ordq3)
+        if ordq1 % z != 0:
+            continue
+        ordq1 /= z
+        ordtup = [ordq1,ordq2,ordq3]
+        if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
+            ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
+    # Know that q2^y = q1^z q3^-r
+    for ordq1, ordq3 in product(range(N+1),repeat = 2):
+        ordq2 = ZZ(z * ordq1 - r * ordq3)
+        if ordq2 % y != 0:
+            continue
+        ordq2 /= y
+        ordtup = [ordq1,ordq2,ordq3]
+        if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
+            ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
+    # Know that q3^r = q1^z q2^-y
+    for ordq1, ordq2 in product(range(N+1),repeat = 2):
+        ordq3 = ZZ(z * ordq1 - y * ordq2)
+        if ordq3 % r != 0:
+            continue
+        ordq3 /= r
+        ordtup = [ordq1,ordq2,ordq3]
+        if all([o >= 0 for o in ordtup]) and len([o for o in ordtup if o == 0]) <= 1:
+            ans = ans.union(ans,set([(ordq1, ordq2, ordq3)]))
     tmp = sorted(list(ans),key = lambda x: x[0]+x[1]+x[2])
     t0 = 0
     if initial is not None:
@@ -338,11 +339,11 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
         try:
             p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
             prec0 = prec
-            IC1 = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec0)
+            IC1 = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec0,padic = True)
             n_iters = 0
             while True:
                 prec0 *= 2
-                IC = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec0)
+                IC = IgusaClebschFromHalfPeriods(p1,p2,p3,prec = prec0,padic = True)
                 if min([(u-v).valuation() - v.valuation() for u,v in zip(IC,IC1)]) >= prec:
                     break
                 n_iters += 1
@@ -367,7 +368,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
                     return (oq1,oq2,oq3,1)
             else:
                 # return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
-                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = prec))
+                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = 200))
         except ValueError:
             pass
         except Exception as e:
