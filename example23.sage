@@ -1,5 +1,5 @@
 load('padicperiods.sage')
-
+load('darmonpoints.sage')
 # A good curve
 # Conductor 23
 x = QQ['x'].gen()
@@ -16,6 +16,9 @@ prec = 30
 working_prec = 60
 x = QQ['x'].gen()
 pol = x^2 + x - 1
+
+from sarithgroup import *
+from cohomology import *
 
 path = ROOT = '/home/float/darmonpoints/'
 G = BigArithGroup(p,D,1,grouptype = "SL2")

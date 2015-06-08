@@ -1,4 +1,5 @@
 ROOT = path = './'
+load_attach_path('/home/float/darmonpoints/')
 # load(path + "darmonpoints.sage")
 # if not path in sys.path:
 #     sys.path.insert(1, path)
@@ -335,6 +336,11 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
         q1 = K(s1 * q10 * p**oq1)
         q2 = K(s2 * q20 * p**oq2)
         q3 = K(s3 * q30 * p**oq3)
+        # Know that q3^r = q1^z q2^-y
+        x,y,z,t = T.list()
+        r = x+y-z-t
+        if q3**r != q1**z * q2**-y:
+            continue
         # for p1,p2,p3 in product(our_sqrt(q1,K,return_all = True),our_sqrt(q2,K,return_all = True),our_sqrt(q3,K,return_all = True)):
         try:
             p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
@@ -368,7 +374,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
                     return (oq1,oq2,oq3,1)
             else:
                 # return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
-                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = 200))
+                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = prec))
         except ValueError:
             pass
         except Exception as e:
@@ -381,9 +387,24 @@ def euler_factor_twodim(p,T):
     n = T.determinant()
     return x**4 - t*x**3 + (2*p+n)*x**2 - p*t*x + p*p
 
-
-
 def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfile = None):
+    load('darmonpoints.sage')
+    from cohomology import CohomologyGroup, get_overconvergent_class_quaternionic
+    from sarithgroup import BigArithGroup
+    from homology import lattice_homology_cycle
+    from itertools import product,chain,izip,groupby,islice,tee,starmap
+    from sage.modules.fg_pid.fgp_module import FGP_Module,FGP_Module_class
+    from sage.matrix.constructor import matrix,Matrix,block_diagonal_matrix,block_matrix
+    from util import tate_parameter,update_progress,get_C_and_C2,getcoords,recognize_point,fwrite
+    import os,datetime
+    from sage.misc.persist import db
+    from sage.rings.padics.precision_error import PrecisionError
+    from util import enumerate_words, discover_equation,get_heegner_params,fwrite,quaternion_algebra_invariants_from_ramification, direct_sum_of_maps
+    from integrals import integrate_H1
+    from sage.ext.c_lib import AlarmInterrupt
+    from sage.misc.misc import alarm, cancel_alarm
+    from sage.rings.integer_ring import ZZ
+
     if outfile is None:
         outfile = 'out_try_luck_cubic_%s.txt'%code
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
@@ -404,7 +425,6 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfi
     g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
 
     fwrite('Obtained homology generators',outfile)
-    from homology import lattice_homology_cycle
     xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
     xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
     fwrite('Defined homology cycles',outfile)
