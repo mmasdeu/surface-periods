@@ -387,8 +387,7 @@ def euler_factor_twodim(p,T):
     n = T.determinant()
     return x**4 - t*x**3 + (2*p+n)*x**2 - p*t*x + p*p
 
-def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfile = None):
-    load('darmonpoints.sage')
+def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None, outfile = None):
     from cohomology import CohomologyGroup, get_overconvergent_class_quaternionic
     from sarithgroup import BigArithGroup
     from homology import lattice_homology_cycle
@@ -405,8 +404,6 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfi
     from sage.misc.misc import alarm, cancel_alarm
     from sage.rings.integer_ring import ZZ
 
-    if outfile is None:
-        outfile = 'out_try_luck_cubic_%s.txt'%code
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
     F.<r> = NumberField(pol)
     r = F.gen()
@@ -415,6 +412,9 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfi
     Np = F.ideal(Npgen)
     Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
     abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
+
+    if outfile is None:
+        outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),P.norm(),D.norm(),(P*D*Np).norm())
 
     G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
     Coh = CohomologyGroup(G.Gpn)
@@ -425,45 +425,55 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfi
     g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
 
     fwrite('Obtained homology generators',outfile)
-    xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
-    xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+    if working_prec is None:
+        working_prec = 2 * prec
+    found = False
+    while not found:
+        try:
+            xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
+            xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+        except PrecisionError:
+            working_prec *= 2
+            fwrite('Raising working precision to %s and trying again'%working_prec,outfile)
     fwrite('Defined homology cycles',outfile)
     Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
     Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
     fwrite('Overconvergent lift completed',outfile)
+    fwrite('T = %s'%str(T.list()),outfile)
+
     from integrals import integrate_H1
     num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
     den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
     A = num/den
     fwrite('Finished computation of A period',outfile)
+    A = A.trace()/A.parent().degree()
+    A = A.add_bigoh(prec + A.valuation())
+    fwrite('A = %s'%A,outfile)
+
     num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
     den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
     B = num/den
     fwrite('Finished computation of B period',outfile)
+    B = B.trace()/B.parent().degree()
+    B = B.add_bigoh(prec + B.valuation())
+    fwrite('B = %s'%B,outfile)
 
     num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
     den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
     D = num/den
     fwrite('Finished computation of D period',outfile)
-
-    A = A.trace()/A.parent().degree()
-    B = B.trace()/B.parent().degree()
     D = D.trace()/D.parent().degree()
-
-    A = A.add_bigoh(prec + A.valuation())
-    B = B.add_bigoh(prec + B.valuation())
     D = D.add_bigoh(prec + D.valuation())
-
-    fwrite('A = %s'%A,outfile)
-    fwrite('B = %s'%B,outfile)
     fwrite('D = %s'%D,outfile)
-    fwrite('T = %s'%str(T.list()),outfile)
+
+
     F = A.parent()
     TF = T.change_ring(F)
     a,b = p_adic_l_invariant(A,B,D,TF)
 
     fwrite('a = %s'%a,outfile)
     fwrite('b = %s'%b,outfile)
+    fwrite('T = %s'%str(T.list()),outfile)
 
     fwrite('Trying to recognize invariants...',outfile)
     phi = G._F_to_local
@@ -472,4 +482,4 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec, outfi
         ans = find_igusa_invariants_from_L_inv(*inpt)
         if ans != 'Nope':
             fwrite(str(ans),outfile)
-    fwrite('Done',outfile)
+    fwrite('DONE WITH COMPUTATION',outfile)

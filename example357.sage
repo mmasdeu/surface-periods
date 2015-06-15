@@ -21,7 +21,7 @@ D = 1
 Np = 3*17
 sign = 1
 prec = 30
-working_prec = 200
+working_prec = 400
 x = QQ['x'].gen()
 pol = x^2 - 2
 
@@ -105,11 +105,11 @@ print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
 print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
 
 from homology import *
-xi10,xi20 = lattice_homology_cycle(G,G.Gn(g0),G.Gn(wp**-1 * g0 * wp),working_prec)
-xi11,xi21 = lattice_homology_cycle(G,G.Gn(g1),G.Gn(wp**-1 * g1 * wp),working_prec)
+xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
+xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
 
-Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,progress_bar = True)
-Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,progress_bar = True)
+Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,1,progress_bar = True)
+Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,1,progress_bar = True)
 
 from integrals import *
 num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
