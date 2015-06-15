@@ -2,6 +2,7 @@ load('padicperiods.sage')
 
 sign = 1
 prec = 30
+timeout = 8 * 3600
 
 #path = ROOT = '/home/float/darmonpoints/'
 from sarithgroup import *
@@ -14,12 +15,14 @@ r = QQ['r'].gen()
 load('candidates_atr.sage')
 
 print 'Candidates LOADED'
-[x^3 - x^2 - 5*x + 8,r - 1,r^2 + r - 3,1,3,12,2]
+
+
 input_vec = []
 for pol, Pgen, Dgen, Npgen, Pnm, Dnm, dim in data:
-    input_vec.append([0,pol,Pgen,Dgen,Npgen,[-1 for o in pol.degree() - 1]])
+    input_vec.append((0,pol,Pgen,Dgen,Npgen,[-1 for o in range(pol.degree() - 1)]))
 
-for inpt, outp in parallel(lambda a,b,c,d,e,f:guess_equation(a,b,c,d,e,f,sign,prec), timeout = 8 * 3600)(candidate_list):
+f_guess_equation = fork(guess_equation,timeout = timeout)
+for inpt, outp in parallel(lambda a,b,c,d,e,f:f_guess_equation(a,b,c,d,e,f,sign,prec))(input_vec):
     print 'Finished inpt = %s'%str(inpt)
 
 # # Below are precomputed values

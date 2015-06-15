@@ -400,11 +400,9 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     from sage.rings.padics.precision_error import PrecisionError
     from util import enumerate_words, discover_equation,get_heegner_params,fwrite,quaternion_algebra_invariants_from_ramification, direct_sum_of_maps
     from integrals import integrate_H1
-    from sage.ext.c_lib import AlarmInterrupt
     from sage.misc.misc import alarm, cancel_alarm
     from sage.rings.integer_ring import ZZ
 
-    fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
     F.<r> = NumberField(pol)
     r = F.gen()
     P = F.ideal(Pgen)
@@ -415,6 +413,8 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
 
     if outfile is None:
         outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),P.norm(),D.norm(),(P*D*Np).norm())
+
+    fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
 
     G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
     Coh = CohomologyGroup(G.Gpn)
