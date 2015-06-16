@@ -403,16 +403,26 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     from sage.misc.misc import alarm, cancel_alarm
     from sage.rings.integer_ring import ZZ
 
-    F.<r> = NumberField(pol)
-    r = F.gen()
-    P = F.ideal(Pgen)
-    D = F.ideal(Dgen)
-    Np = F.ideal(Npgen)
-    Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
-    abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
+    if pol.degree() > 1:
+        F.<r> = NumberField(pol)
+        r = F.gen()
+        P = F.ideal(Pgen)
+        D = F.ideal(Dgen)
+        Np = F.ideal(Npgen)
+        Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
+        abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
+        if outfile is None:
+            outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),P.norm(),D.norm(),(P*D*Np).norm())
+    else:
+        F = QQ
+        P = Pgen
+        D = Dgen
+        Np = Npgen
+        Sinv_places = []
+        abtuple = QuaternionAlgebra(D).invariants()
+        if outfile is None:
+            outfile = 'atr_surface_%s_%s_%s_%s.txt'%(1,P,D,(P*D*Np))
 
-    if outfile is None:
-        outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),P.norm(),D.norm(),(P*D*Np).norm())
 
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
 
@@ -430,56 +440,57 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     found = False
     while not found:
         try:
-            xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
-            xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
+            xi10,xi20 = lattice_homology_cycle(G, g0, working_prec)
+            xi11,xi21 = lattice_homology_cycle(G, g1, working_prec)
+            found = True
         except PrecisionError:
             working_prec *= 2
-            fwrite('Raising working precision to %s and trying again'%working_prec,outfile)
-    fwrite('Defined homology cycles',outfile)
-    Phif = get_overconvergent_class_quaternionic(P,flist[0],G,prec,sign,progress_bar = True)
-    Phig = get_overconvergent_class_quaternionic(P,flist[1],G,prec,sign,progress_bar = True)
-    fwrite('Overconvergent lift completed',outfile)
-    fwrite('T = %s'%str(T.list()),outfile)
+            fwrite('Raising working precision to %s and trying again'%working_prec, outfile)
+    fwrite('Defined homology cycles', outfile)
+    Phif = get_overconvergent_class_quaternionic(P, flist[0], G, prec, sign, progress_bar = True)
+    Phig = get_overconvergent_class_quaternionic(P, flist[1], G, prec, sign, progress_bar = True)
+    fwrite('Overconvergent lift completed', outfile)
+    fwrite('T = %s'%str(T.list()), outfile)
 
     from integrals import integrate_H1
-    num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi20,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    A = num/den
-    fwrite('Finished computation of A period',outfile)
-    A = A.trace()/A.parent().degree()
+    num = integrate_H1(G, xi10, Phif, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
+    den = integrate_H1(G, xi20, Phif, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
+    A = num / den
+    fwrite('Finished computation of A period', outfile)
+    A = A.trace() / A.parent().degree()
     A = A.add_bigoh(prec + A.valuation())
-    fwrite('A = %s'%A,outfile)
+    fwrite('A = %s'%A, outfile)
 
-    num = integrate_H1(G,xi11,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi21,Phif,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    B = num/den
-    fwrite('Finished computation of B period',outfile)
-    B = B.trace()/B.parent().degree()
+    num = integrate_H1(G, xi11, Phif, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
+    den = integrate_H1(G, xi21,Phif, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
+    B = num / den
+    fwrite('Finished computation of B period', outfile)
+    B = B.trace() / B.parent().degree()
     B = B.add_bigoh(prec + B.valuation())
-    fwrite('B = %s'%B,outfile)
+    fwrite('B = %s'%B, outfile)
 
-    num = integrate_H1(G,xi11,Phig,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
-    den = integrate_H1(G,xi21,Phig,1,method = 'moments',prec = working_prec, twist = True,progress_bar = True)
-    D = num/den
-    fwrite('Finished computation of D period',outfile)
-    D = D.trace()/D.parent().degree()
+    num = integrate_H1(G, xi11, Phig, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
+    den = integrate_H1(G, xi21, Phig, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
+    D = num / den
+    fwrite('Finished computation of D period', outfile)
+    D = D.trace() / D.parent().degree()
     D = D.add_bigoh(prec + D.valuation())
-    fwrite('D = %s'%D,outfile)
+    fwrite('D = %s'%D, outfile)
 
 
     F = A.parent()
     TF = T.change_ring(F)
-    a,b = p_adic_l_invariant(A,B,D,TF)
+    a,b = p_adic_l_invariant(A, B, D, TF)
 
-    fwrite('a = %s'%a,outfile)
-    fwrite('b = %s'%b,outfile)
-    fwrite('T = %s'%str(T.list()),outfile)
+    fwrite('a = %s'%a, outfile)
+    fwrite('b = %s'%b, outfile)
+    fwrite('T = %s'%str(T.list()), outfile)
 
     fwrite('Trying to recognize invariants...',outfile)
     phi = G._F_to_local
-    inp_vec = [(a,b,T.transpose(),qords,prec,P.ring(),None,phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ),20)]
+    inp_vec = [(a, b, T.transpose(), qords, prec, P.ring(), None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
     for inpt in inp_vec:
         ans = find_igusa_invariants_from_L_inv(*inpt)
         if ans != 'Nope':
-            fwrite(str(ans),outfile)
-    fwrite('DONE WITH COMPUTATION',outfile)
+            fwrite(str(ans), outfile)
+    fwrite('DONE WITH COMPUTATION', outfile)
