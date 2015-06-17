@@ -1,9 +1,15 @@
 #Starting computation for candidate (1048, x^4 + 5*x^2 - 3, 1/2*r^2 - 1/2*r + 5/2, 1, 1, [-1, -1])
 
-prec = 300
+load_attach_path('../surface-periods/')
+load('padicperiods.sage')
+prec = 20
 x = QQ['x'].gen()
 F.<r> = NumberField(x^4 + 5*x^2 - 3)
 P = F.ideal( 1/2*r^2 - 1/2*r + 5/2)
+set_verbose(1)
+magma.eval('SetSeed(152665)')
+guess_equation(0,F.polynomial(),P.gens_reduced()[0],F.ideal(1),F.ideal(1),[-1,-1],1,prec)
+
 p = P.norm()
 Fp = Qp(p,prec)
 phi =  F.hom([F.gen().minpoly().change_ring(Fp).roots()[0][0]])

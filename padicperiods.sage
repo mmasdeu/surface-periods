@@ -330,14 +330,14 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
     x = QQ['x'].gen()
     K.<y> = F.extension(x^2 + p)
     deg = base.degree()
-    oq1, oq2, oq3 = qords
+    oq1, oq2, oq3 = [ZZ(o) for o in qords]
     q10, q20, q30 = [o.exp() for o in qlogs_from_Lp_and_ords(a,b,TF,oq1,oq2,oq3)]
     for s1, s2, s3 in product(F.teichmuller_system(),repeat = 3):
         q1 = K(s1 * q10 * p**oq1)
         q2 = K(s2 * q20 * p**oq2)
         q3 = K(s3 * q30 * p**oq3)
         # Know that q3^r = q1^z q2^-y
-        x,y,z,t = T.list()
+        x,y,z,t = [ZZ(o) for o in T.list()]
         r = x+y-z-t
         if q3**r != q1**z * q2**-y:
             continue
@@ -423,10 +423,9 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         if outfile is None:
             outfile = 'atr_surface_%s_%s_%s_%s.txt'%(1,P,D,(P*D*Np))
 
-
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
 
-    G = BigArithGroup(P,abtuple,Np,base = F,grouptype = 'PGL2')
+    G = BigArithGroup(P,abtuple,Np,base = F)
     Coh = CohomologyGroup(G.Gpn)
     fwrite('Computed Cohomology group',outfile)
     flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
@@ -447,8 +446,8 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
             working_prec *= 2
             fwrite('Raising working precision to %s and trying again'%working_prec, outfile)
     fwrite('Defined homology cycles', outfile)
-    Phif = get_overconvergent_class_quaternionic(P, flist[0], G, prec, sign, progress_bar = True)
-    Phig = get_overconvergent_class_quaternionic(P, flist[1], G, prec, sign, progress_bar = True)
+    Phif = get_overconvergent_class_quaternionic(P, flist[0], G, prec, sign, 1, progress_bar = True)
+    Phig = get_overconvergent_class_quaternionic(P, flist[1], G, prec, sign, 1, progress_bar = True)
     fwrite('Overconvergent lift completed', outfile)
     fwrite('T = %s'%str(T.list()), outfile)
 
@@ -457,24 +456,24 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     den = integrate_H1(G, xi20, Phif, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
     A = num / den
     fwrite('Finished computation of A period', outfile)
-    A = A.trace() / A.parent().degree()
     A = A.add_bigoh(prec + A.valuation())
+    A = A.trace() / A.parent().degree()
     fwrite('A = %s'%A, outfile)
 
     num = integrate_H1(G, xi11, Phif, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
     den = integrate_H1(G, xi21,Phif, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
     B = num / den
     fwrite('Finished computation of B period', outfile)
-    B = B.trace() / B.parent().degree()
     B = B.add_bigoh(prec + B.valuation())
+    B = B.trace() / B.parent().degree()
     fwrite('B = %s'%B, outfile)
 
     num = integrate_H1(G, xi11, Phig, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
     den = integrate_H1(G, xi21, Phig, 1, method = 'moments', prec = working_prec, twist = True, progress_bar = True)
     D = num / den
     fwrite('Finished computation of D period', outfile)
-    D = D.trace() / D.parent().degree()
     D = D.add_bigoh(prec + D.valuation())
+    D = D.trace() / D.parent().degree()
     fwrite('D = %s'%D, outfile)
 
 
@@ -488,7 +487,8 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
 
     fwrite('Trying to recognize invariants...',outfile)
     phi = G._F_to_local
-    inp_vec = [(a, b, T.transpose(), qords, prec, P.ring(), None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
+    Pring = P.ring() if hasattr(P,'ring') else QQ
+    inp_vec = [(a, b, T.transpose(), qords, prec, Pring, None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
     for inpt in inp_vec:
         ans = find_igusa_invariants_from_L_inv(*inpt)
         if ans != 'Nope':

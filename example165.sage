@@ -60,22 +60,7 @@ V = Bab.gen(0).lift().parent()
 good_ker = V.span_of_basis([o.lift() for o in fg.kernel().gens()]).LLL().rows()
 ker = [B.ab_to_G(Bab(o)).quaternion_rep for o in good_ker]
 
-foundg0 = False
-foundg1 = False
-for o in ker:
-    a,b = flist[0].evaluate(o)[0], flist[1].evaluate(o)[0]
-    if not foundg0 and b == 0 and a != 0:
-        foundg0 = True
-        g0 = o
-        g0coeff = a
-    if not foundg1 and a == 0 and b != 0:
-        foundg1 = True
-        g1 = o
-        g1coeff = b
-assert foundg0 and foundg1
-c = lcm(g0coeff,g1coeff)
-g0 = g0**ZZ(c/g0coeff)
-g1 = g1**ZZ(c/g1coeff)
+g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = 2)
 
 print [flist[0].evaluate(g0),flist[0].evaluate(g1)]
 print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
@@ -83,8 +68,8 @@ print [flist[1].evaluate(g0),flist[1].evaluate(g1)]
 from homology import *
 xi10,xi20 = lattice_homology_cycle(G,g0,working_prec)
 xi11,xi21 = lattice_homology_cycle(G,g1,working_prec)
-Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,progress_bar = True)
-Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,progress_bar = True)
+Phif = get_overconvergent_class_quaternionic(p,flist[0],G,prec,sign,1,progress_bar = True)
+Phig = get_overconvergent_class_quaternionic(p,flist[1],G,prec,sign,1,progress_bar = True)
 
 from integrals import *
 num = integrate_H1(G,xi10,Phif,1,method = 'moments',prec = working_prec, twist = False,progress_bar = True)
