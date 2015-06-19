@@ -4,11 +4,13 @@ load_attach_path('../surface-periods/')
 load('padicperiods.sage')
 prec = 20
 x = QQ['x'].gen()
-F.<r> = NumberField(x^4 + 5*x^2 - 3)
-P = F.ideal( 1/2*r^2 - 1/2*r + 5/2)
+F.<r> = NumberField(x^3 + 2*x - 1)
+P = F.ideal( r - 2)
+D = F.ideal( r^2 + 1)
+Np = F.ideal( r + 2)
 set_verbose(1)
-magma.eval('SetSeed(152665)')
-guess_equation(0,F.polynomial(),P.gens_reduced()[0],F.ideal(1),F.ideal(1),[-1,-1],1,prec)
+magma.eval('SetSeed(152165)') # '1923524827 0' '2927257754 0'
+guess_equation(0,F.polynomial(),P.gens_reduced()[0],D.gens_reduced()[0], Np.gens_reduced()[0],[-1,-1],1,prec)
 
 p = P.norm()
 Fp = Qp(p,prec)

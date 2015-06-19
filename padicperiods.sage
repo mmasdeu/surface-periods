@@ -1,14 +1,5 @@
-ROOT = path = './'
-load_attach_path('/home/float/darmonpoints/')
-# load(path + "darmonpoints.sage")
-# if not path in sys.path:
-#     sys.path.insert(1, path)
-# del path
 from itertools import product
 from util import *
-# from arithgroup import *
-# from sarithgroup import *
-# from cohomology import *
 
 # Theta functions of (25) in Teitelbaum's
 # and also the other theta functions that we need to compute the lambda's according to the formulas (23)
@@ -407,15 +398,17 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         F.<r> = NumberField(pol)
         r = F.gen()
         P = F.ideal(Pgen)
+        Pnrm = P.norm()
         D = F.ideal(Dgen)
         Np = F.ideal(Npgen)
         Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
         abtuple = quaternion_algebra_invariants_from_ramification(F,D,Sinf_places)
         if outfile is None:
-            outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),P.norm(),D.norm(),(P*D*Np).norm())
+            outfile = 'atr_surface_%s_%s_%s_%s.txt'%(F.discriminant().abs(),Pnrm,D.norm(),(P*D*Np).norm())
     else:
         F = QQ
         P = Pgen
+        Pnrm = P
         D = Dgen
         Np = Npgen
         Sinv_places = []
@@ -423,6 +416,8 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         if outfile is None:
             outfile = 'atr_surface_%s_%s_%s_%s.txt'%(1,P,D,(P*D*Np))
 
+    if Pnrm > 23:
+        return 'Giving up, prime norm is too large (Pnrm = %s)'%Pnrm
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
 
     G = BigArithGroup(P,abtuple,Np,base = F)
@@ -494,3 +489,4 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         if ans != 'Nope':
             fwrite(str(ans), outfile)
     fwrite('DONE WITH COMPUTATION', outfile)
+    return('DONE')
