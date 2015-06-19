@@ -378,7 +378,7 @@ def euler_factor_twodim(p,T):
     n = T.determinant()
     return x**4 - t*x**3 + (2*p+n)*x**2 - p*t*x + p*p
 
-def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None, outfile = None):
+def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None, outfile = None, recognize_invariants = True):
     from cohomology import CohomologyGroup, get_overconvergent_class_quaternionic
     from sarithgroup import BigArithGroup
     from homology import lattice_homology_cycle
@@ -399,6 +399,7 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         r = F.gen()
         P = F.ideal(Pgen)
         Pnrm = P.norm()
+        Pring = P.ring()
         D = F.ideal(Dgen)
         Np = F.ideal(Npgen)
         Sinf_places = [v for v,o in zip(F.real_places(prec = Infinity),Sinf) if o == -1]
@@ -409,6 +410,7 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         F = QQ
         P = Pgen
         Pnrm = P
+        Pring = QQ
         D = Dgen
         Np = Npgen
         Sinv_places = []
@@ -480,13 +482,14 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     fwrite('b = %s'%b, outfile)
     fwrite('T = %s'%str(T.list()), outfile)
 
-    fwrite('Trying to recognize invariants...',outfile)
-    phi = G._F_to_local
-    Pring = P.ring() if hasattr(P,'ring') else QQ
-    inp_vec = [(a, b, T.transpose(), qords, prec, Pring, None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
-    for inpt in inp_vec:
-        ans = find_igusa_invariants_from_L_inv(*inpt)
-        if ans != 'Nope':
-            fwrite(str(ans), outfile)
+    if recognize_invariants:
+        fwrite('Trying to recognize invariants...',outfile)
+        phi = G._F_to_local
+
+        inp_vec = [(a, b, T.transpose(), qords, prec, Pring, None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
+        for inpt in inp_vec:
+            ans = find_igusa_invariants_from_L_inv(*inpt)
+            if ans != 'Nope':
+                fwrite(str(ans), outfile)
     fwrite('DONE WITH COMPUTATION', outfile)
     return('DONE')

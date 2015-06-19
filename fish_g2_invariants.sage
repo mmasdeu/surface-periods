@@ -21,5 +21,5 @@ for pol, Pgen, Dgen, Npgen, Pnm, Dnm, dim in data:
     input_vec.append((0,pol,Pgen,Dgen,Npgen,[-1 for o in range(pol.degree() - 1)]))
 
 f_guess_equation = fork(guess_equation,timeout = timeout)
-for inpt, outp in parallel(lambda a,b,c,d,e,f:f_guess_equation(a,b,c,d,e,f,sign,prec))(input_vec):
+for inpt, outp in parallel(lambda a,b,c,d,e,f:f_guess_equation(a,b,c,d,e,f,sign,prec, recognize_invariants = False))(input_vec):
     print 'Finished inpt = %s. Result: %s'%(str(inpt),str(outp))
