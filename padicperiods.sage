@@ -427,8 +427,7 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     fwrite('Computed Cohomology group',outfile)
     flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
     fwrite('Obtained cocycle',outfile)
-    ell, T = hecke_data[0]
-    g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = ell)
+    g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = [ell for ell, T in hecke_data])
 
     fwrite('Obtained homology generators',outfile)
     if working_prec is None:
@@ -446,7 +445,6 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     Phif = get_overconvergent_class_quaternionic(P, flist[0], G, prec, sign, 1, progress_bar = True)
     Phig = get_overconvergent_class_quaternionic(P, flist[1], G, prec, sign, 1, progress_bar = True)
     fwrite('Overconvergent lift completed', outfile)
-    fwrite('T = %s'%str(T.list()), outfile)
 
     from integrals import integrate_H1
     num = integrate_H1(G, xi10, Phif, 1, method = 'moments', prec = working_prec, twist = False, progress_bar = True)
@@ -473,6 +471,16 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     D = D.trace() / D.parent().degree()
     fwrite('D = %s'%D, outfile)
 
+    found = False
+    for T0, ell in hecke_data:
+        fwrite('ell = %s'%ell)
+        fwrite('T_ell = %s'%str(T0.list()), outfile)
+        if T0.charpoly().is_irreducible():
+            found = True
+            T = T0
+            fwrite('The above is the good T', outfile)
+    if not found:
+        fwrite('Good T not found...', outfile)
 
     F = A.parent()
     TF = T.change_ring(F)
@@ -480,7 +488,6 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
 
     fwrite('a = %s'%a, outfile)
     fwrite('b = %s'%b, outfile)
-    fwrite('T = %s'%str(T.list()), outfile)
 
     if recognize_invariants:
         fwrite('Trying to recognize invariants...',outfile)
