@@ -269,7 +269,7 @@ def recognize_j1(j1,base = QQ,phi = None,threshold = 0.9,prec = None):
         try:
             return fx.roots(base)[0][0]
         except IndexError:
-            return fx
+            raise ValueError('No roots')
     raise ValueError('Unrecognized')
 
 def recognize_invariants(j1,j2,j3,pval,base = QQ,phi = None):
@@ -349,23 +349,23 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
 
             I2c, I4c, I6c, I10c = IC
             # Get absolute invariants j1, j2, j3
-            j1 = I2c**5/I10c
-            j2 = I2c**3*I4c/I10c
-            j3 = I2c**2*I6c/I10c
+            j1 = I2c**5 / I10c
+            j2 = I2c**3 * I4c / I10c
+            j3 = I2c**2 * I6c / I10c
             j1n = j1.trace() / j1.parent().degree()
             j2n = j2.trace() / j2.parent().degree()
             j3n = j3.trace() / j3.parent().degree()
-            assert (j1 - j1n).valuation() > 5,'j1 = %s, j1n = %s'%(j1,j1n)
-            assert (j2 - j2n).valuation() > 5,'j2err'
-            assert (j3 - j3n).valuation() > 5,'j3err'
+            assert (j1 - j1n).valuation() - j1.valuation() > 5,'j1 = %s, j1n = %s'%(j1,j1n)
+            assert (j2 - j2n).valuation() - j2.valuation() > 5,'j2 = %s, j2n = %s'%(j2,j2n)
+            assert (j3 - j3n).valuation() - j3.valuation() > 5,'j3 = %s, j3n = %s'%(j3,j3n)
             j1, j2, j3 = j1n, j2n, j3n
 
             if cheatjs is not None:
-                if min([(u-v).valuation() for u,v in zip([j1,j2,j3],cheatjs)]) > 3:
+                if all([(u-v).valuation() - u.valuation() > 3 for u,v in zip([j1,j2,j3],cheatjs)]):
                     return (oq1,oq2,oq3,1)
             else:
                 # return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
-                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.90,prec = prec))
+                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.85,prec = prec))
         except ValueError:
             pass
         except Exception as e:
