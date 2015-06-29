@@ -473,7 +473,7 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
 
     found = False
     for T0, ell in hecke_data:
-        fwrite('ell = %s'%ell)
+        fwrite('ell = %s'%ell, outfile)
         fwrite('T_ell = %s'%str(T0.list()), outfile)
         if T0.charpoly().is_irreducible():
             found = True
