@@ -253,21 +253,21 @@ def ComputeRootFromApprox(f,x0, prec):
         xn = xnn
     return xn
 
-def recognize_j1(j1,base = QQ,phi = None,threshold = 0.9,prec = None):
+def recognize_absolute_invariant(j_invariant,base = QQ,phi = None,threshold = 0.9,prec = None):
     deg = base.degree()
-    Kp = j1.parent()
+    Kp = j_invariant.parent()
     p = Kp.prime()
     if phi is None:
         phi = lambda t:t
     threshold = threshold * RR(p).log(10)
-    j1val = j1.valuation()
-    j1 = p**-j1val * j1
+    j_invariant_val = j_invariant.valuation()
+    j_invariant = p**-j_invariant_val * j_invariant
     if prec is not None:
-        j1 = Qp(p,prec)(j1.lift())
-    fx = algdep(j1,deg)
-    if height_polynomial(fx) < threshold * j1.precision_relative():
+        j_invariant = Qp(p,prec)(j_invariant.lift())
+    fx = algdep(j_invariant,deg)
+    if height_polynomial(fx) < threshold * j_invariant.precision_relative():
         try:
-            return fx.roots(base)[0][0]
+            return p**j_invariant_val * fx.roots(base)[0][0]
         except IndexError:
             raise ValueError('No roots')
     raise ValueError('Unrecognized')
@@ -332,7 +332,6 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
         r = x+y-z-t
         if q3**r != q1**z * q2**-y:
             continue
-        # for p1,p2,p3 in product(our_sqrt(q1,K,return_all = True),our_sqrt(q2,K,return_all = True),our_sqrt(q3,K,return_all = True)):
         try:
             p1,p2,p3 = our_sqrt(q1,K),our_sqrt(q2,K),our_sqrt(q3,K)
             prec0 = prec
@@ -365,7 +364,7 @@ def find_igusa_invariants_from_L_inv(a,b,T,qords,prec,base = QQ,cheatjs = None,p
                     return (oq1,oq2,oq3,1)
             else:
                 # return recognize_invariants(j1,j2,j3,oq1+oq2+oq3,base = base,phi = phi)
-                return (1,1,1,recognize_j1(j1,base = base,phi = phi,threshold = 0.85,prec = prec))
+                return (recognize_absolute_invariant(j1,base = base,phi = phi,threshold = 0.85,prec = prec), 1, 1, 1)
         except ValueError:
             pass
         except Exception as e:
@@ -378,7 +377,7 @@ def euler_factor_twodim(p,T):
     n = T.determinant()
     return x**4 - t*x**3 + (2*p+n)*x**2 - p*t*x + p*p
 
-def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None, outfile = None, recognize_invariants = True):
+def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, hecke_poly = None, working_prec = None, outfile = None, recognize_invariants = True):
     from cohomology import CohomologyGroup, get_overconvergent_class_quaternionic
     from sarithgroup import BigArithGroup
     from homology import lattice_homology_cycle
@@ -418,14 +417,14 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
         if outfile is None:
             outfile = 'atr_surface_%s_%s_%s_%s.txt'%(1,P,D,(P*D*Np))
 
-    if Pnrm > 23:
+    if Pnrm > 29:
         return 'Giving up, prime norm is too large (Pnrm = %s)'%Pnrm
     fwrite('Starting computation for candidate %s'%str((code,pol,Pgen,Dgen,Npgen,Sinf)),outfile)
 
     G = BigArithGroup(P,abtuple,Np,base = F)
     Coh = CohomologyGroup(G.Gpn)
     fwrite('Computed Cohomology group',outfile)
-    flist, hecke_data = Coh.get_twodim_cocycle(sign,return_all = False)
+    flist, hecke_data = Coh.get_twodim_cocycle(sign, pol = hecke_poly, return_all = False)
     fwrite('Obtained cocycle',outfile)
     g0, g1 = G.get_pseudo_orthonormal_homology(flist,smoothen = [ell for ell, T in hecke_data])
 
@@ -472,7 +471,7 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     fwrite('D = %s'%D, outfile)
 
     found = False
-    for T0, ell in hecke_data:
+    for ell, T0 in hecke_data:
         fwrite('ell = %s'%ell, outfile)
         fwrite('T_ell = %s'%str(T0.list()), outfile)
         if T0.charpoly().is_irreducible():
@@ -490,13 +489,14 @@ def guess_equation(code,pol,Pgen,Dgen,Npgen,Sinf,sign, prec, working_prec = None
     fwrite('b = %s'%b, outfile)
 
     if recognize_invariants:
+        from sage.matrix.constructor import companion_matrix
         fwrite('Trying to recognize invariants...',outfile)
         phi = G._F_to_local
-
+        T = companion_matrix(T.charpoly()).change_ring(ZZ)
         inp_vec = [(a, b, T.transpose(), qords, prec, Pring, None, phi) for qords in all_possible_qords(T.transpose().change_ring(ZZ), 20)]
         for inpt in inp_vec:
             ans = find_igusa_invariants_from_L_inv(*inpt)
-            if ans != 'Nope':
+            if ans != 'Nope' and ans != '' and 'indistinguishable' not in ans:
                 fwrite(str(ans), outfile)
     fwrite('DONE WITH COMPUTATION', outfile)
     return('DONE')
